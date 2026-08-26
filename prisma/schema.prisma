@@ -261,6 +261,18 @@ model LegacyTodoStore {
   value Json
 }
 
+// Backing store for the literally-copied Status Tracker frontend
+// (public/legacy/status-tracker/index.html, unmodified UI/business logic).
+// The original app synced its `tasks`/`clients` data to OneDrive via
+// Microsoft Graph, using a master token cached in a public GitHub file
+// refreshed by a client-side GitHub write token -- that token leaked
+// publicly, so this port replaces that whole relay with this table instead.
+// Keys: "config" (users list) and "tasks" ({tasks, clients}).
+model LegacyStatusStore {
+  key   String @id
+  value Json
+}
+
 model PolicySignature {
   id            String   @id @default(cuid())
   policyId      String
