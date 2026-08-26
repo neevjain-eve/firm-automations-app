@@ -6802,7 +6802,7 @@ async function generateBillPdf(bill){
   doc.setFontSize(8);doc.setTextColor(150);doc.text('Generated: '+new Date().toLocaleString(),lm,285);
   return doc.output('blob');
 }
-async async function loadCloudConfig(){}
+async function loadCloudConfig(){}
 async function pushCloudConfig(updates){return true}
 
 

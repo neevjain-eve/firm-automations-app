@@ -16,7 +16,7 @@ export default function ToDoListPage() {
     <iframe
       src="/legacy/todo-list/index.html"
       title="To-Do List"
-      style={{ width: '100%', height: 'calc(100vh - 110px)', border: 'none', borderRadius: 12, background: '#fff' }}
+      style={{ width: '100%', height: '100vh', border: 'none', background: '#fff' }}
     />
   );
 }
