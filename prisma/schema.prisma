@@ -273,6 +273,17 @@ model LegacyStatusStore {
   value Json
 }
 
+// Backing store for the literally-copied EL Tracker (Agreement Tracker)
+// frontend. Same rationale as LegacyStatusStore: the original app's
+// OneDrive sync relied on a client-side GitHub write token (also leaked
+// publicly) to refresh a shared master token. Keys: "data"
+// ({agreements, bills, clientTasks, lastUpdated, updatedBy}) and "users"
+// (the app's own staff login list, separate from Firm Automations accounts).
+model LegacyElTrackerStore {
+  key   String @id
+  value Json
+}
+
 model PolicySignature {
   id            String   @id @default(cuid())
   policyId      String
