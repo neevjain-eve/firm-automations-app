@@ -4688,25 +4688,12 @@ function saveChangePw(){
 // ══════════════════════════════════════════════
 function hashPw(pw){let h=0;for(let i=0;i<pw.length;i++){h=(h<<5)-h+pw.charCodeAt(i);h|=0}return 'h'+Math.abs(h).toString(36)+'x'+pw.length}
 function getDefaultUsers(){
+  // Real staff accounts now live server-side in Postgres
+  // (/api/legacy-el-tracker/users) and are fetched at load time --
+  // no credentials are embedded in this client file. This bootstrap
+  // account only applies on a first-ever run before the cloud list loads.
   return [
-    {id:'admin',username:'admin',name:'Administrator',role:'admin',pwHash:hashPw('admin123'),status:'active'},
-    // Accounting Retainer Services
-    {id:'u_naveen',username:'naveen',name:'Naveen Kumar',role:'user',pwHash:hashPw('naveen123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    {id:'u_srikrishna',username:'srikrishna',name:'Srikrishna',role:'user',pwHash:hashPw('srikrishna123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    {id:'u_manju',username:'manju',name:'Manju',role:'user',pwHash:hashPw('manju123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    {id:'u_bindu',username:'bindu',name:'Bindu',role:'user',pwHash:hashPw('bindu123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    {id:'u_kavya',username:'kavya',name:'Kavya',role:'user',pwHash:hashPw('kavya123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    {id:'u_ramya',username:'ramya',name:'Ramya',role:'user',pwHash:hashPw('ramya123'),status:'active',allowedCats:['Accounting Retainer Services']},
-    // CS Retainer Services
-    {id:'u_rinkal',username:'rinkal',name:'Rinkal',role:'user',pwHash:hashPw('rinkal123'),status:'active',allowedCats:['CS Retainer Services']},
-    // Advisory Services
-    {id:'u_richa',username:'richa',name:'Richa',role:'user',pwHash:hashPw('richa123'),status:'active',allowedCats:['Advisory Services']},
-    // Audit & Assurance Services
-    {id:'u_shalini',username:'shalini',name:'Shalini',role:'user',pwHash:hashPw('shalini123'),status:'active',allowedCats:['Audit & Assurance Services']},
-    {id:'u_divya',username:'divya',name:'Divya',role:'user',pwHash:hashPw('divya123'),status:'active',allowedCats:['Audit & Assurance Services']},
-    // Tax Services
-    {id:'u_sandeep',username:'sandeep',name:'Sandeep',role:'user',pwHash:hashPw('sandeep123'),status:'active',allowedCats:['Tax Services']},
-    {id:'u_rakesh',username:'rakesh',name:'Rakesh',role:'user',pwHash:hashPw('rakesh123'),status:'active',allowedCats:['Tax Services']},
+    {id:'admin',username:'admin',name:'Administrator',role:'admin',pwHash:hashPw('ChangeMe#2026'),status:'active'},
   ];
 }
 function getUsers(){
