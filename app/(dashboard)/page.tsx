@@ -6,12 +6,18 @@ import AutomationCard from '@/components/AutomationCard';
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
+  const firstName = (session?.user?.name ?? session?.user?.email ?? 'there').split(' ')[0];
+  const liveCount = automations.filter((a) => a.status === 'live').length;
+
   return (
     <div>
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-slate-500">
-          Welcome back, {session?.user?.name ?? session?.user?.email ?? 'there'}.
+      <header className="mb-10">
+        <p className="mb-1.5 text-[13px] font-medium text-accent-600">Dashboard</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          Welcome back, {firstName}.
+        </h1>
+        <p className="mt-1.5 text-[13px] text-zinc-500">
+          {liveCount} automation{liveCount === 1 ? '' : 's'} ready to use.
         </p>
       </header>
 

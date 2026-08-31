@@ -42,85 +42,92 @@ export default function AppShell({
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-white">
       {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col bg-slate-900 text-slate-200">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-bold text-slate-900">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-100 bg-white">
+        <div className="flex items-center gap-2.5 px-5 py-6">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
             FA
           </div>
-          <span className="text-sm font-semibold text-white">Firm Automations</span>
+          <span className="text-sm font-semibold tracking-tight text-zinc-900">
+            Firm Automations
+          </span>
         </div>
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`group flex items-center gap-3 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
                   active
-                    ? 'bg-white/10 text-white'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    ? 'bg-zinc-100 text-zinc-900'
+                    : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
                 }`}
               >
-                <span className="w-4 text-center">{item.icon}</span>
+                <span
+                  className={`w-4 text-center text-[13px] ${
+                    active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
+                  }`}
+                >
+                  {item.icon}
+                </span>
                 {item.label}
               </Link>
             );
           })}
         </nav>
-        <div className="px-3 pb-5 pt-2 text-xs text-slate-500">
-          Signed in as
-          <br />
-          <span className="text-slate-300">{user.email}</span>
+        <div className="border-t border-zinc-100 px-5 py-4">
+          <p className="truncate text-xs text-zinc-400">Signed in as</p>
+          <p className="truncate text-xs font-medium text-zinc-600">{user.email}</p>
         </div>
       </aside>
 
       {/* Main content */}
       <div className="flex-1">
         {!online && (
-          <div className="bg-amber-100 px-6 py-2 text-center text-xs font-medium text-amber-800">
+          <div className="bg-amber-50 px-6 py-2 text-center text-xs font-medium text-amber-800">
             You&apos;re offline -- showing the last saved data. Changes will sync once you&apos;re
             back online.
           </div>
         )}
-        <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+        <header className="flex items-center justify-between gap-3 border-b border-zinc-100 bg-white/80 px-8 py-4 backdrop-blur">
+          <div className="flex items-center gap-2 text-[13px] text-zinc-400">
             <span>Firm Automations</span>
             {currentPage && currentPage.href !== '/' && (
               <>
-                <span className="text-slate-300">/</span>
-                <span className="font-medium text-slate-900">{currentPage.label}</span>
+                <span className="text-zinc-300">/</span>
+                <span className="font-medium text-zinc-900">{currentPage.label}</span>
               </>
             )}
           </div>
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-full pr-2 hover:bg-slate-100"
+              className="flex items-center gap-2 rounded-full pr-1 transition-colors hover:bg-zinc-100"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white">
                 {initial}
               </span>
             </button>
             {menuOpen && (
               <div
-                className="absolute right-0 z-10 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                className="absolute right-0 z-10 mt-2 w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-card"
                 onMouseLeave={() => setMenuOpen(false)}
               >
-                <div className="px-3 py-2 text-xs text-slate-500">
-                  <p className="font-medium text-slate-800">{user.name}</p>
+                <div className="px-3 py-2 text-xs text-zinc-400">
+                  <p className="text-sm font-medium text-zinc-900">{user.name}</p>
                   <p>{user.email}</p>
                   {user.role && (
-                    <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase text-slate-500">
+                    <span className="mt-1.5 inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                       {user.role}
                     </span>
                   )}
                 </div>
                 <Link
                   href="/settings"
-                  className="block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  className="block rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                   onClick={() => setMenuOpen(false)}
                 >
                   Settings
@@ -135,7 +142,7 @@ export default function AppShell({
             )}
           </div>
         </header>
-        <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+        <main className="mx-auto max-w-5xl px-8 py-10">{children}</main>
       </div>
     </div>
   );

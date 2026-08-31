@@ -51,72 +51,76 @@ export default function SignupPage() {
     router.refresh();
   }
 
+  const inputClass =
+    'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100';
+  const labelClass = 'mb-1.5 block text-xs font-medium text-zinc-600';
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-center text-xl font-semibold text-slate-900">
-          Firm Automations
-        </h1>
-        <p className="mb-6 text-center text-sm text-slate-500">
-          Create your account with your @pdka.in email.
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      <div className="w-full max-w-[360px]">
+        <div className="mb-8 flex flex-col items-center">
+          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-sm font-bold text-white">
+            FA
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900">Create your account</h1>
+          <p className="mt-1 text-[13px] text-zinc-500">Use your @pdka.in email to sign up.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-zinc-200 p-6 shadow-soft">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Full name</label>
+            <label className={labelClass}>Full name</label>
             <input
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
               placeholder="Your name"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Email</label>
+            <label className={labelClass}>Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
               placeholder="you@pdka.in"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Password</label>
+            <label className={labelClass}>Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
               placeholder="At least 8 characters"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Confirm password
-            </label>
+            <label className={labelClass}>Confirm password</label>
             <input
               type="password"
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-[13px] text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-600 disabled:opacity-50"
           >
             {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-5 text-center text-[13px] text-zinc-500">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-slate-900 hover:underline">
+          <Link href="/login" className="font-medium text-zinc-900 hover:text-accent-600">
             Sign in
           </Link>
         </p>
