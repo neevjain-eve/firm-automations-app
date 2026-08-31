@@ -10,3 +10,4 @@ public/legacy/**/node_modules
 npm-debug.log*
 .DS_Store
 .github/
+tsconfig.tsbuildinfo
