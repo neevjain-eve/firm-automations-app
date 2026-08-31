@@ -20,7 +20,7 @@ function formatSize(bytes: number) {
 export default function AttachmentsSection({
   entityType,
   entityId,
-  accentClass = 'bg-slate-900 hover:bg-slate-700'
+  accentClass = 'bg-zinc-900 hover:bg-accent-600'
 }: {
   entityType: string;
   entityId: string;

@@ -43,75 +43,80 @@ export default function SettingsPage() {
     }
   }
 
+  const inputClass =
+    'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100';
+  const labelClass = 'mb-1.5 block text-xs font-medium text-zinc-600';
+
   return (
     <div className="max-w-md">
-      <h1 className="mb-1 text-2xl font-semibold">Settings</h1>
-      <p className="mb-6 text-sm text-slate-500">Manage your account.</p>
+      <p className="mb-1.5 text-[13px] font-medium text-accent-600">Account</p>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight text-zinc-900">Settings</h1>
+      <p className="mb-8 text-[13px] text-zinc-500">Manage your profile and password.</p>
 
-      <div className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Profile</h2>
-        <dl className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-slate-500">Name</dt>
-            <dd className="text-slate-900">{session?.user?.name}</dd>
+      <div className="mb-6 rounded-xl border border-zinc-200 p-5 shadow-soft">
+        <h2 className="mb-3 text-[13px] font-semibold text-zinc-900">Profile</h2>
+        <dl className="space-y-2 text-[13px]">
+          <div className="flex justify-between border-b border-zinc-50 pb-2">
+            <dt className="text-zinc-500">Name</dt>
+            <dd className="font-medium text-zinc-900">{session?.user?.name}</dd>
+          </div>
+          <div className="flex justify-between border-b border-zinc-50 pb-2">
+            <dt className="text-zinc-500">Email</dt>
+            <dd className="font-medium text-zinc-900">{session?.user?.email}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-500">Email</dt>
-            <dd className="text-slate-900">{session?.user?.email}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-slate-500">Role</dt>
-            <dd className="capitalize text-slate-900">{(session?.user as any)?.role}</dd>
+            <dt className="text-zinc-500">Role</dt>
+            <dd>
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium capitalize text-zinc-600">
+                {(session?.user as any)?.role}
+              </span>
+            </dd>
           </div>
         </dl>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Change password</h2>
+      <div className="rounded-xl border border-zinc-200 p-5 shadow-soft">
+        <h2 className="mb-3 text-[13px] font-semibold text-zinc-900">Change password</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Current password
-            </label>
+            <label className={labelClass}>Current password</label>
             <input
               type="password"
               required
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">New password</label>
+            <label className={labelClass}>New password</label>
             <input
               type="password"
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Confirm new password
-            </label>
+            <label className={labelClass}>Confirm new password</label>
             <input
               type="password"
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className={inputClass}
             />
           </div>
           {status && (
-            <p className={`text-sm ${status.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+            <p className={`text-[13px] ${status.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
               {status.text}
             </p>
           )}
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-600 disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Update password'}
           </button>

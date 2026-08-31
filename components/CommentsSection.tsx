@@ -12,7 +12,7 @@ type Comment = {
 export default function CommentsSection({
   entityType,
   entityId,
-  accentClass = 'bg-slate-900 hover:bg-slate-700'
+  accentClass = 'bg-zinc-900 hover:bg-accent-600'
 }: {
   entityType: string;
   entityId: string;
