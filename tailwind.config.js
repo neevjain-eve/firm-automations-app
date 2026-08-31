@@ -23,6 +23,25 @@ module.exports = {
           600: '#4f46e5',
           700: '#4338ca'
         }
+      },
+      keyframes: {
+        blob: {
+          '0%, 100%': { transform: 'translate(0px, 0px) scale(1)' },
+          '33%': { transform: 'translate(30px, -40px) scale(1.1)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.95)' }
+        },
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        }
+      },
+      animation: {
+        blob: 'blob 14s infinite ease-in-out',
+        'fade-up': 'fade-up 0.5s ease-out both'
+      },
+      backgroundImage: {
+        'grid-pattern':
+          'linear-gradient(to right, rgb(0 0 0 / 0.035) 1px, transparent 1px), linear-gradient(to bottom, rgb(0 0 0 / 0.035) 1px, transparent 1px)'
       }
     }
   },
