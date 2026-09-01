@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Paperclip } from 'lucide-react';
 
 type Attachment = {
   id: string;
@@ -20,7 +21,7 @@ function formatSize(bytes: number) {
 export default function AttachmentsSection({
   entityType,
   entityId,
-  accentClass = 'bg-zinc-900 hover:bg-accent-600'
+  accentClass = 'bg-gradient-to-r from-accent-500 to-violet-600 hover:shadow-glow'
 }: {
   entityType: string;
   entityId: string;
@@ -68,25 +69,33 @@ export default function AttachmentsSection({
 
   return (
     <div>
-      <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6b7280' }}>
+      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
         Attachments {files.length > 0 ? `(${files.length})` : ''}
       </p>
       {loading ? (
-        <p style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</p>
+        <p className="text-xs text-zinc-600">Loading…</p>
       ) : files.length === 0 ? (
-        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>No files attached yet.</p>
+        <p className="mb-2 text-xs text-zinc-600">No files attached yet.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+        <div className="mb-2.5 flex flex-col gap-1.5">
           {files.map((f) => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', borderRadius: 8, padding: '7px 10px' }}>
-              <span style={{ fontSize: 16 }}>📎</span>
-              <a href={f.fileUrl} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div
+              key={f.id}
+              className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1.5"
+            >
+              <Paperclip className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+              <a
+                href={f.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 truncate text-[13px] font-medium text-zinc-200 no-underline hover:text-accent-400"
+              >
                 {f.fileName}
               </a>
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>{formatSize(f.fileSize)}</span>
+              <span className="text-[11px] text-zinc-600">{formatSize(f.fileSize)}</span>
               <button
                 onClick={() => remove(f.id)}
-                style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                className="text-[11px] text-red-400 hover:text-red-300"
               >
                 Delete
               </button>
@@ -94,11 +103,11 @@ export default function AttachmentsSection({
           ))}
         </div>
       )}
-      {error && <p style={{ fontSize: 12, color: '#ef4444', marginBottom: 6 }}>{error}</p>}
+      {error && <p className="mb-1.5 text-xs text-red-400">{error}</p>}
       <input
         ref={inputRef}
         type="file"
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) upload(file);
@@ -108,8 +117,7 @@ export default function AttachmentsSection({
       <button
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className={accentClass}
-        style={{ borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff', border: 'none', cursor: 'pointer' }}
+        className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-white transition-all disabled:opacity-50 ${accentClass}`}
       >
         {uploading ? 'Uploading…' : '+ Attach file'}
       </button>

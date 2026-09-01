@@ -11,22 +11,26 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <header className="relative mb-12 overflow-hidden rounded-3xl border border-zinc-100 bg-gradient-to-br from-zinc-50 via-white to-accent-50/40 px-8 py-10">
+      <header className="relative mb-12 overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/40 px-8 py-12">
+        <div className="pointer-events-none absolute inset-0 bg-radial-spotlight" />
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-10 -top-16 h-56 w-56 animate-blob rounded-full bg-accent-200/40 blur-3xl" />
-          <div className="absolute -right-8 top-4 h-56 w-56 animate-blob rounded-full bg-fuchsia-200/30 blur-3xl [animation-delay:4s]" />
-          <div className="absolute bottom-[-4rem] left-1/3 h-56 w-56 animate-blob rounded-full bg-sky-200/30 blur-3xl [animation-delay:8s]" />
-          <div className="absolute inset-0 bg-grid-pattern bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_85%)]" />
+          <div className="absolute -left-16 -top-20 h-64 w-64 animate-blob rounded-full bg-accent-500/20 blur-3xl" />
+          <div className="absolute -right-10 top-0 h-64 w-64 animate-blob rounded-full bg-fuchsia-500/10 blur-3xl [animation-delay:4s]" />
+          <div className="absolute inset-0 bg-grid-pattern bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]" />
         </div>
 
         <div className="relative">
-          <p className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-[12px] font-medium text-accent-700 ring-1 ring-inset ring-accent-100 backdrop-blur">
+          <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-accent-500/20 bg-accent-500/10 px-3 py-1 text-[12px] font-medium text-accent-300">
             Dashboard
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
-            Welcome back, {firstName}.
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            Welcome back,
+            <br />
+            <span className="bg-gradient-to-r from-white via-accent-200 to-accent-400 bg-clip-text text-transparent">
+              {firstName}.
+            </span>
           </h1>
-          <p className="mt-2 text-[14px] text-zinc-500">
+          <p className="mt-3 text-[14px] text-zinc-400">
             {liveCount} automation{liveCount === 1 ? '' : 's'} ready to use.
           </p>
         </div>

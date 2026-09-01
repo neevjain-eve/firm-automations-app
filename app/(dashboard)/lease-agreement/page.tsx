@@ -23,10 +23,10 @@ function computeStatus(endDate: string) {
   const daysLeft = Math.ceil(
     (new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
-  if (daysLeft < 0) return { key: 'expired', label: 'Expired', color: 'bg-red-100 text-red-700' };
+  if (daysLeft < 0) return { key: 'expired', label: 'Expired', color: 'bg-red-500/10 text-red-400' };
   if (daysLeft <= 30)
-    return { key: 'expiring', label: 'Expiring soon', color: 'bg-amber-100 text-amber-700' };
-  return { key: 'active', label: 'Active', color: 'bg-emerald-50 text-emerald-700' };
+    return { key: 'expiring', label: 'Expiring soon', color: 'bg-amber-500/10 text-amber-400' };
+  return { key: 'active', label: 'Active', color: 'bg-emerald-500/10 text-emerald-400' };
 }
 
 export default function LeaseAgreementPage() {
@@ -118,31 +118,31 @@ export default function LeaseAgreementPage() {
 
   return (
     <div>
-      <p className="mb-1.5 text-[13px] font-medium text-accent-600">Automation</p>
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight text-zinc-900">Lease Agreement</h1>
+      <p className="mb-1.5 text-[13px] font-medium text-accent-400">Automation</p>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight text-white">Lease Agreement</h1>
       <p className="mb-6 text-sm text-zinc-500">
         Track property/asset leases and see what&apos;s expiring soon. Prototype -- no billing or
         document storage yet.
       </p>
 
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-soft">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-soft backdrop-blur-sm">
           <p className="text-xs text-zinc-500">Active</p>
-          <p className="text-xl font-semibold text-zinc-900">{counts.active}</p>
+          <p className="text-xl font-semibold text-white">{counts.active}</p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-soft">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-soft backdrop-blur-sm">
           <p className="text-xs text-zinc-500">Expiring soon</p>
-          <p className="text-xl font-semibold text-zinc-900">{counts.expiring}</p>
+          <p className="text-xl font-semibold text-white">{counts.expiring}</p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-soft">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-soft backdrop-blur-sm">
           <p className="text-xs text-zinc-500">Expired</p>
-          <p className="text-xl font-semibold text-zinc-900">{counts.expired}</p>
+          <p className="text-xl font-semibold text-white">{counts.expired}</p>
         </div>
       </div>
 
       <form
         onSubmit={addLease}
-        className="mb-8 space-y-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-soft"
+        className="mb-8 space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-5 shadow-soft backdrop-blur-sm"
       >
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -153,7 +153,7 @@ export default function LeaseAgreementPage() {
               value={form.propertyName}
               onChange={(e) => setForm({ ...form, propertyName: e.target.value })}
               required
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
               placeholder="e.g. 3rd Floor Office, MG Road"
             />
           </div>
@@ -163,7 +163,7 @@ export default function LeaseAgreementPage() {
               value={form.lessorName}
               onChange={(e) => setForm({ ...form, lessorName: e.target.value })}
               required
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -173,7 +173,7 @@ export default function LeaseAgreementPage() {
               value={form.startDate}
               onChange={(e) => setForm({ ...form, startDate: e.target.value })}
               required
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -183,7 +183,7 @@ export default function LeaseAgreementPage() {
               value={form.endDate}
               onChange={(e) => setForm({ ...form, endDate: e.target.value })}
               required
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -194,7 +194,7 @@ export default function LeaseAgreementPage() {
               type="number"
               value={form.rentAmount}
               onChange={(e) => setForm({ ...form, rentAmount: e.target.value })}
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -204,7 +204,7 @@ export default function LeaseAgreementPage() {
             <input
               value={form.contactPerson}
               onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -214,7 +214,7 @@ export default function LeaseAgreementPage() {
             <input
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -225,7 +225,7 @@ export default function LeaseAgreementPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
           <div>
@@ -233,7 +233,7 @@ export default function LeaseAgreementPage() {
             <input
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
-              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
         </div>
@@ -245,13 +245,13 @@ export default function LeaseAgreementPage() {
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={2}
-            className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
           />
         </div>
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
+          className="rounded-lg bg-gradient-to-r from-accent-500 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-glow transition-all hover:shadow-glow-lg disabled:opacity-50"
         >
           {saving ? 'Adding…' : 'Add lease'}
         </button>
@@ -262,12 +262,12 @@ export default function LeaseAgreementPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by property or lessor…"
-          className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100"
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-500/50 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -277,7 +277,7 @@ export default function LeaseAgreementPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1,2,3].map((i) => (<div key={i} className="h-20 animate-pulse rounded-xl bg-zinc-100" />))}</div>
+        <div className="space-y-3">{[1,2,3].map((i) => (<div key={i} className="h-20 animate-pulse rounded-xl bg-white/5" />))}</div>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-zinc-500">
           {leases.length === 0 ? 'No leases yet -- add one above.' : 'No leases match your search.'}
@@ -285,11 +285,11 @@ export default function LeaseAgreementPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((l) => (
-            <div key={l.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-soft">
+            <div key={l.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-soft backdrop-blur-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p
-                    className="font-medium text-zinc-900 cursor-pointer"
+                    className="font-medium text-white cursor-pointer"
                     onClick={() => setExpandedId(expandedId === l.id ? null : l.id)}
                   >
                     {l.propertyName}
@@ -307,7 +307,7 @@ export default function LeaseAgreementPage() {
                     {l.email ? ` · ${l.email}` : ''}
                   </p>
                   {l.notes && <p className="mt-1 text-sm text-zinc-600">{l.notes}</p>}
-                  <p className="mt-1 text-xs text-zinc-400">
+                  <p className="mt-1 text-xs text-zinc-600">
                     Added by {l.createdBy?.name ?? l.createdBy?.email}
                   </p>
                 </div>
@@ -320,13 +320,13 @@ export default function LeaseAgreementPage() {
               <div className="mt-3">
                 <button
                   onClick={() => removeLease(l.id)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="text-xs text-red-400 hover:text-red-300"
                 >
                   Delete
                 </button>
               </div>
               {expandedId === l.id && (
-                <div className="mt-3 space-y-4 border-t border-zinc-100 pt-3">
+                <div className="mt-3 space-y-4 border-t border-white/5 pt-3">
                   <AttachmentsSection entityType="lease" entityId={l.id} />
                   <CommentsSection entityType="lease" entityId={l.id} />
                 </div>
