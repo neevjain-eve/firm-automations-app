@@ -14,34 +14,39 @@ import {
   CheckSquare2,
   PenTool,
   Settings as SettingsIcon,
+  ShieldCheck,
   ChevronDown,
   LogOut,
   WifiOff
 } from 'lucide-react';
+import { hasTrackerAccess } from '@/lib/permissions';
 
 const NAV = [
-  { href: '/', label: 'Dashboard', Icon: LayoutGrid },
-  { href: '/status-tracker', label: 'Status Tracker', Icon: ListChecks },
-  { href: '/el-tracker', label: 'EL Tracker', Icon: FileClock },
-  { href: '/gst-reconciliation', label: 'GST Reconciliation', Icon: Receipt },
-  { href: '/lease-agreement', label: 'Lease Agreement', Icon: Building2 },
-  { href: '/todo-list', label: 'To-Do List', Icon: CheckSquare2 },
-  { href: '/e-signature', label: 'e-Signature', Icon: PenTool },
-  { href: '/settings', label: 'Settings', Icon: SettingsIcon }
-];
+  { href: '/', label: 'Dashboard', Icon: LayoutGrid, trackerKey: null },
+  { href: '/status-tracker', label: 'Status Tracker', Icon: ListChecks, trackerKey: 'status-tracker' },
+  { href: '/el-tracker', label: 'EL Tracker', Icon: FileClock, trackerKey: 'el-tracker' },
+  { href: '/gst-reconciliation', label: 'GST Reconciliation', Icon: Receipt, trackerKey: 'gst-reconciliation' },
+  { href: '/lease-agreement', label: 'Lease Agreement', Icon: Building2, trackerKey: 'lease-agreement' },
+  { href: '/todo-list', label: 'To-Do List', Icon: CheckSquare2, trackerKey: 'todo-list' },
+  { href: '/e-signature', label: 'e-Signature', Icon: PenTool, trackerKey: 'e-signature' },
+  { href: '/settings', label: 'Settings', Icon: SettingsIcon, trackerKey: null }
+] as const;
 
 export default function AppShell({
   children,
   user
 }: {
   children: React.ReactNode;
-  user: { name?: string | null; email?: string | null; role?: string };
+  user: { name?: string | null; email?: string | null; role?: string; allowedTrackers?: string[] };
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [online, setOnline] = useState(true);
   const initial = (user.name || user.email || '?').charAt(0).toUpperCase();
-  const currentPage = NAV.find((item) => item.href === pathname);
+
+  const visibleNav = NAV.filter((item) => !item.trackerKey || hasTrackerAccess(user, item.trackerKey));
+  const nav = user.role === 'admin' ? [...visibleNav, { href: '/admin', label: 'User Access', Icon: ShieldCheck, trackerKey: null }] : visibleNav;
+  const currentPage = nav.find((item) => item.href === pathname);
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -68,7 +73,7 @@ export default function AppShell({
           </span>
         </div>
         <nav className="flex-1 space-y-0.5 px-3">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.href;
             const Icon = item.Icon;
             return (

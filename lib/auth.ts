@@ -1,43 +1,96 @@
 import { NextAuthOptions } from 'next-auth';
+import AzureADProvider from 'next-auth/providers/azure-ad';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
-// Simple, reliable email + password login. No external identity provider to
-// misconfigure -- accounts are created directly for firm staff (see
-// app/api/admin/create-user/route.ts) with a bcrypt-hashed password.
-export const authOptions: NextAuthOptions = {
-  providers: [
-    CredentialsProvider({
-      name: 'Email and password',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
+// Accounts are provisioned by an admin (see app/(dashboard)/admin) before
+// anyone can sign in with them -- there's no self-serve signup into the
+// mapped-account system. Two ways in for a provisioned account:
+//  1. "Sign in with Microsoft" -- the firm's existing Office 365/Azure AD
+//     work account (the "PDKA account"). Preferred: no separate password.
+//  2. Email + password -- kept as a fallback (e.g. for the initial admin
+//     account, or if Azure AD isn't set up for someone yet).
+const providers: NextAuthOptions['providers'] = [
+  CredentialsProvider({
+    name: 'Email and password',
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' }
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials.password) return null;
 
-        const dbUser = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase() }
-        });
-        if (!dbUser || !dbUser.password) return null;
+      const dbUser = await prisma.user.findUnique({
+        where: { email: credentials.email.toLowerCase() }
+      });
+      if (!dbUser || !dbUser.password) return null;
 
-        const valid = await bcrypt.compare(credentials.password, dbUser.password);
-        if (!valid) return null;
+      const valid = await bcrypt.compare(credentials.password, dbUser.password);
+      if (!valid) return null;
 
-        return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role
-        } as any;
-      }
+      return {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role
+      } as any;
+    }
+  })
+];
+
+// Only register the Microsoft button once the Azure AD app registration is
+// actually configured -- otherwise NextAuth would show a broken provider.
+if (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET && process.env.AZURE_AD_TENANT_ID) {
+  providers.push(
+    AzureADProvider({
+      clientId: process.env.AZURE_AD_CLIENT_ID,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
+      tenantId: process.env.AZURE_AD_TENANT_ID
     })
-  ],
+  );
+}
+
+export const authOptions: NextAuthOptions = {
+  providers,
   callbacks: {
-    async jwt({ token, user }) {
+    // Gate: a Microsoft sign-in only succeeds if an admin has already
+    // provisioned a User row for that email. Credentials sign-in is already
+    // gated by authorize() returning null for unknown emails, so it's a
+    // no-op there.
+    async signIn({ user, account }) {
+      if (account?.provider !== 'azure-ad') return true;
+      if (!user.email) return false;
+
+      const dbUser = await prisma.user.findUnique({ where: { email: user.email.toLowerCase() } });
+      if (!dbUser) return '/login?error=NotProvisioned';
+
+      // Keep the display name in sync with Microsoft's, and stamp the
+      // Prisma id + role onto the `user` object so the jwt callback below
+      // (which runs right after this) can read them.
+      if (dbUser.name !== user.name && user.name) {
+        await prisma.user.update({ where: { id: dbUser.id }, data: { name: user.name } });
+      }
+      (user as any).id = dbUser.id;
+      (user as any).role = dbUser.role;
+      (user as any).allowedTrackers = dbUser.allowedTrackers;
+      return true;
+    },
+    async jwt({ token, user, trigger }) {
       if (user) {
         (token as any).role = (user as any).role;
+        (token as any).allowedTrackers = (user as any).allowedTrackers;
+      }
+      // Permissions can change after the token was issued (an admin ticks a
+      // new checkbox). Rather than hit the DB on every single request, only
+      // refresh when the client explicitly asks (useSession().update()) --
+      // the admin panel calls that right after saving someone's access.
+      if (trigger === 'update') {
+        const dbUser = await prisma.user.findUnique({ where: { id: token.sub } });
+        if (dbUser) {
+          (token as any).role = dbUser.role;
+          (token as any).allowedTrackers = dbUser.allowedTrackers;
+        }
       }
       return token;
     },
@@ -45,6 +98,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.sub;
         (session.user as any).role = (token as any).role ?? 'staff';
+        (session.user as any).allowedTrackers = (token as any).allowedTrackers ?? [];
       }
       return session;
     }

@@ -1,13 +1,15 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { automations } from '@/lib/automations';
+import { hasTrackerAccess } from '@/lib/permissions';
 import AutomationCard from '@/components/AutomationCard';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
   const firstName = (session?.user?.name ?? session?.user?.email ?? 'there').split(' ')[0];
-  const liveCount = automations.filter((a) => a.status === 'live').length;
+  const visibleAutomations = automations.filter((a) => hasTrackerAccess(session?.user as any, a.id));
+  const liveCount = visibleAutomations.filter((a) => a.status === 'live').length;
 
   return (
     <div>
@@ -36,11 +38,17 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {automations.map((automation, index) => (
-          <AutomationCard key={automation.id} automation={automation} index={index} />
-        ))}
-      </div>
+      {visibleAutomations.length === 0 ? (
+        <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-10 text-center text-[13px] text-zinc-500">
+          You don't have access to any trackers yet. Ask an admin to grant you access.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleAutomations.map((automation, index) => (
+            <AutomationCard key={automation.id} automation={automation} index={index} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

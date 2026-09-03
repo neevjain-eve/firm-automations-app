@@ -12,8 +12,12 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  password  String?  // bcrypt hash -- optional so existing rows aren't broken by this migration
-  role      String   @default("staff") // "staff" | "partner" | "admin"
+  password  String?  // bcrypt hash -- optional; not needed once signed in via Microsoft/Azure AD
+  role      String   @default("staff") // "staff" | "manager" | "admin"
+  // Which trackers (by key, matching TRACKER_KEYS in lib/permissions.ts) this
+  // account may open. Ignored for role "admin" (admins always see everything).
+  // Set by an admin from the /admin user-management panel.
+  allowedTrackers String[] @default([])
   createdAt DateTime @default(now())
 
   runs               AutomationRun[]
