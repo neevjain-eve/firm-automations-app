@@ -51,6 +51,28 @@ if (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET && proc
   );
 }
 
+// The sign-in route uses this instead of the static `authOptions` below, so
+// that credentials saved in Settings -> Connections take effect without a
+// redeploy. Everywhere else (getServerSession) only needs the session/jwt
+// callbacks, for which the static export is fine.
+export async function buildAuthOptions(): Promise<NextAuthOptions> {
+  const { getAzureAdConfig } = await import('@/lib/settings');
+  const azure = await getAzureAdConfig();
+
+  const runtimeProviders: NextAuthOptions['providers'] = [providers[0]]; // credentials
+  if (azure.clientId && azure.clientSecret && azure.tenantId) {
+    runtimeProviders.push(
+      AzureADProvider({
+        clientId: azure.clientId,
+        clientSecret: azure.clientSecret,
+        tenantId: azure.tenantId
+      })
+    );
+  }
+
+  return { ...authOptions, providers: runtimeProviders };
+}
+
 export const authOptions: NextAuthOptions = {
   providers,
   callbacks: {

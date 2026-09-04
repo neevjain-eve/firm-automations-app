@@ -34,6 +34,18 @@ model User {
   attachments        Attachment[]
 }
 
+// Admin-editable configuration that would otherwise live in env vars, set
+// from Settings -> Connections. Secret values (e.g. the Azure AD client
+// secret) are stored encrypted with SETTINGS_ENCRYPTION_KEY -- see
+// lib/crypto.ts. DATABASE_URL deliberately does NOT live here: the app needs
+// a database connection before it can read this table.
+model AppSetting {
+  key       String   @id
+  value     String   @db.Text // AES-256-GCM ciphertext when isSecret
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
 // Generic comment thread attachable to any tracker entity (Status Tracker task,
 // Agreement, GST reconciliation row, Lease, To-Do task). entityType is a short
 // tag like "status_task" | "agreement" | "gst" | "lease" | "todo_task", and

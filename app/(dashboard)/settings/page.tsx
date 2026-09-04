@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import ConnectionsCard from './ConnectionsCard';
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -48,7 +49,7 @@ export default function SettingsPage() {
   const labelClass = 'mb-1.5 block text-xs font-medium text-zinc-600';
 
   return (
-    <div className="max-w-md">
+    <div className="max-w-xl">
       <p className="mb-1.5 text-[13px] font-medium text-accent-400">Account</p>
       <h1 className="mb-1 text-2xl font-semibold tracking-tight text-white">Settings</h1>
       <p className="mb-8 text-[13px] text-zinc-500">Manage your profile and password.</p>
@@ -122,6 +123,9 @@ export default function SettingsPage() {
           </button>
         </form>
       </div>
+
+      {/* Renders only for admins -- the API behind it returns 401 otherwise. */}
+      <ConnectionsCard />
     </div>
   );
 }
