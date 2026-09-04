@@ -8,6 +8,7 @@ type Status = {
   tenantId: string;
   clientSecretSet: boolean;
   source: 'database' | 'env' | 'none';
+  blobTokenSet: boolean;
   encryptionKeyConfigured: boolean;
 };
 
@@ -21,6 +22,7 @@ export default function ConnectionsCard() {
   const [clientId, setClientId] = useState('');
   const [tenantId, setTenantId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [blobToken, setBlobToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -51,7 +53,7 @@ export default function ConnectionsCard() {
     const res = await fetch('/api/admin/connections', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId, tenantId, clientSecret })
+      body: JSON.stringify({ clientId, tenantId, clientSecret, blobToken })
     });
     setSaving(false);
     const body = await res.json().catch(() => ({}));
@@ -60,6 +62,7 @@ export default function ConnectionsCard() {
       return;
     }
     setClientSecret('');
+    setBlobToken('');
     setMessage({ type: 'success', text: 'Saved. Sign-in uses these straight away.' });
     load();
   }
@@ -83,7 +86,7 @@ export default function ConnectionsCard() {
     <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-5 shadow-soft backdrop-blur-sm">
       <div className="mb-1 flex items-center gap-2">
         <Plug className="h-3.5 w-3.5 text-accent-400" />
-        <h2 className="text-[13px] font-semibold text-white">Connections — Microsoft sign-in</h2>
+        <h2 className="text-[13px] font-semibold text-white">Connections</h2>
       </div>
       <p className="mb-4 text-[12px] text-zinc-500">
         Azure AD app registration used for &quot;Sign in with Microsoft&quot;. Currently reading from{' '}
@@ -141,6 +144,27 @@ export default function ConnectionsCard() {
           />
           <p className="mt-1 text-[11px] text-zinc-600">
             Stored encrypted. It&apos;s never shown again after saving.
+          </p>
+        </div>
+
+        <div className="border-t border-white/5 pt-3">
+          <label className={labelClass}>
+            File storage token{' '}
+            {status.blobTokenSet && (
+              <span className="ml-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                configured
+              </span>
+            )}
+          </label>
+          <input
+            type="password"
+            value={blobToken}
+            onChange={(e) => setBlobToken(e.target.value)}
+            className={inputClass}
+            placeholder={status.blobTokenSet ? 'Leave blank to keep current token' : 'vercel_blob_rw_...'}
+          />
+          <p className="mt-1 text-[11px] text-zinc-600">
+            Used for file attachments on trackers. Stored encrypted.
           </p>
         </div>
 

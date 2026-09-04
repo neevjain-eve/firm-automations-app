@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
+import { getBlobToken } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -27,9 +28,10 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const blobToken = await getBlobToken();
+  if (!blobToken) {
     return NextResponse.json(
-      { error: 'File storage is not set up yet. Connect a Vercel Blob store to this project.' },
+      { error: 'File storage is not set up yet. Add a Blob read/write token in Settings → Connections.' },
       { status: 503 }
     );
   }
@@ -47,7 +49,8 @@ export async function POST(req: NextRequest) {
   }
 
   const blob = await put(`${entityType}/${entityId}/${Date.now()}-${file.name}`, file, {
-    access: 'public'
+    access: 'public',
+    token: blobToken
   });
 
   const attachment = await prisma.attachment.create({

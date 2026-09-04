@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { del } from '@vercel/blob';
+import { getBlobToken } from '@/lib/settings';
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -17,8 +18,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   try {
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      await del(attachment.fileUrl);
+    const blobToken = await getBlobToken();
+    if (blobToken) {
+      await del(attachment.fileUrl, { token: blobToken });
     }
   } catch {
     // if the blob is already gone, still clean up the DB row

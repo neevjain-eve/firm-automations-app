@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { encryptionKeyConfigured } from '@/lib/crypto';
-import { AZURE_KEYS, getAzureAdConfig, writeSetting, deleteSetting } from '@/lib/settings';
+import {
+  AZURE_KEYS,
+  STORAGE_KEYS,
+  getAzureAdConfig,
+  getBlobToken,
+  writeSetting,
+  deleteSetting
+} from '@/lib/settings';
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -17,11 +24,13 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const config = await getAzureAdConfig();
+  const blobToken = await getBlobToken();
   return NextResponse.json({
     clientId: config.clientId ?? '',
     tenantId: config.tenantId ?? '',
     clientSecretSet: !!config.clientSecret,
     source: config.source,
+    blobTokenSet: !!blobToken,
     encryptionKeyConfigured: encryptionKeyConfigured()
   });
 }
@@ -32,9 +41,9 @@ export async function PUT(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const { clientId, tenantId, clientSecret } = await req.json();
+  const { clientId, tenantId, clientSecret, blobToken } = await req.json();
 
-  if (clientSecret && !encryptionKeyConfigured()) {
+  if ((clientSecret || blobToken) && !encryptionKeyConfigured()) {
     return NextResponse.json(
       {
         error:
@@ -55,9 +64,12 @@ export async function PUT(req: NextRequest) {
         ? await writeSetting(AZURE_KEYS.tenantId, tenantId.trim(), false)
         : await deleteSetting(AZURE_KEYS.tenantId);
     }
-    // An empty/absent clientSecret means "leave the existing one alone".
+    // An empty/absent secret means "leave the existing one alone".
     if (typeof clientSecret === 'string' && clientSecret.trim()) {
       await writeSetting(AZURE_KEYS.clientSecret, clientSecret.trim(), true);
+    }
+    if (typeof blobToken === 'string' && blobToken.trim()) {
+      await writeSetting(STORAGE_KEYS.blobToken, blobToken.trim(), true);
     }
   } catch (err) {
     return NextResponse.json(

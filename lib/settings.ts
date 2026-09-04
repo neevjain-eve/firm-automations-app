@@ -7,6 +7,18 @@ export const AZURE_KEYS = {
   tenantId: 'azure_ad_tenant_id'
 } as const;
 
+export const STORAGE_KEYS = {
+  blobToken: 'blob_read_write_token'
+} as const;
+
+// Four env vars can never move in here, by definition:
+//   DATABASE_URL / DIRECT_URL  - needed to reach this table in the first place
+//   NEXTAUTH_SECRET            - middleware verifies JWTs on the edge runtime,
+//                                which has no database access
+//   SETTINGS_ENCRYPTION_KEY    - it's the key protecting these rows; storing it
+//                                beside them would defeat the encryption
+// Everything else an admin might need to rotate lives here.
+
 export type AzureAdConfig = {
   clientId: string | null;
   clientSecret: string | null;
@@ -39,6 +51,18 @@ export async function writeSetting(key: string, value: string, isSecret: boolean
 
 export async function deleteSetting(key: string) {
   await prisma.appSetting.deleteMany({ where: { key } });
+}
+
+// Vercel Blob token used for file attachments. Same precedence rule as
+// everything else: what an admin saved wins, env var is the fallback.
+export async function getBlobToken(): Promise<string | null> {
+  try {
+    const saved = await readSetting(STORAGE_KEYS.blobToken, true);
+    if (saved) return saved;
+  } catch {
+    // fall through to env
+  }
+  return process.env.BLOB_READ_WRITE_TOKEN ?? null;
 }
 
 // Values saved in Settings -> Connections win; otherwise fall back to the
