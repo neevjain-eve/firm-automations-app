@@ -50,6 +50,7 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: '/api/login', destination: '/api/legacy-todo/login' },
+      { source: '/api/ms-login', destination: '/api/legacy-todo/ms-login' },
       { source: '/api/employees', destination: '/api/legacy-todo/employees' },
       { source: '/api/managers', destination: '/api/legacy-todo/managers' },
       { source: '/api/personal-tasks', destination: '/api/legacy-todo/personal-tasks' },
