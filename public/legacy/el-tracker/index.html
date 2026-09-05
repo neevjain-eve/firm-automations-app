@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -718,6 +718,11 @@
       </div>
       <div class="login-error" id="loginError"></div>
       <div class="login-success" id="loginSuccess" style="display:none"></div>
+      <button type="button" onclick="msLogin()" style="width:100%;background:#2f2f2f;color:#fff;border:none;border-radius:8px;padding:10px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">
+        <svg width="16" height="16" viewBox="0 0 16 16"><rect width="7" height="7" fill="#f25022"/><rect x="9" width="7" height="7" fill="#7fba00"/><rect y="9" width="7" height="7" fill="#00a4ef"/><rect x="9" y="9" width="7" height="7" fill="#ffb900"/></svg>
+        Sign in with Microsoft
+      </button>
+      <div style="text-align:center;color:#888;font-size:12px;margin:0 0 14px">— or use username/password —</div>
       <div class="login-field"><label>Username / Email</label><input type="text" id="loginUser" placeholder="Enter username or email" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"/></div>
       <div class="login-field"><label>Password</label><div class="pw-wrap"><input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/><button class="pw-eye" onclick="togglePw('loginPass',this)" type="button">👁</button></div></div>
       <button class="btn-login" onclick="doLogin()">🔐 Sign In</button>
@@ -4718,6 +4723,40 @@ function saveUsers(u){localStorage.setItem('agrUsers',JSON.stringify(u));if(msal
 function getSession(){const s=localStorage.getItem('agrSession');return s?JSON.parse(s):null}
 function setSession(u){localStorage.setItem('agrSession',JSON.stringify({userId:u.id,username:u.username,name:u.name,role:u.role,ts:Date.now()}))}
 function clearSession(){localStorage.removeItem('agrSession')}
+const FIRMAPP_MS_CLIENT_ID='1c7835f2-1f9c-4089-acc6-afd98e7d079c';
+const FIRMAPP_MS_TENANT_ID='e59dbd77-92dd-44d5-bf18-06de4bc8ce9c';
+let firmappLoginMsal=null;
+function getFirmappLoginMsal(){
+  if(firmappLoginMsal)return firmappLoginMsal;
+  if(typeof msal==='undefined')return null;
+  firmappLoginMsal=new msal.PublicClientApplication({auth:{clientId:FIRMAPP_MS_CLIENT_ID,authority:'https://login.microsoftonline.com/'+FIRMAPP_MS_TENANT_ID,redirectUri:getRedirectUri()},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}});
+  return firmappLoginMsal;
+}
+async function msLogin(){
+  const err=document.getElementById('loginError');err.style.display='none';
+  const app=getFirmappLoginMsal();
+  if(!app){err.style.display='block';err.textContent='Microsoft sign-in could not load. Try again or use your username/password.';return}
+  let result;
+  try{result=await app.loginPopup({scopes:['User.Read']});}
+  catch(e){if(e&&e.errorCode==='user_cancelled')return;err.style.display='block';err.textContent='Microsoft sign-in failed: '+(e&&e.message?e.message:e);return}
+  const upn=(result.account&&(result.account.username||''))||'';
+  const emailLower=upn.toLowerCase();
+  const localPart=emailLower.split('@')[0];
+  const users=getUsers();
+  let u=users.find(x=>(x.email&&x.email.toLowerCase()===emailLower)||x.username.toLowerCase()===localPart);
+  if(!u){
+    // Auto-provision: any Microsoft account from our tenant can sign in;
+    // no admin needs to pre-create the account. New accounts get the
+    // lowest-privilege role and an admin can promote them afterwards.
+    const displayName=(result.account&&result.account.name)||localPart;
+    u={id:'u'+Date.now(),username:localPart,name:displayName,email:emailLower,role:'user',pwHash:'',status:'active'};
+    users.push(u);
+    saveUsers(users);
+  }
+  if(u.status==='pending'){err.style.display='block';err.textContent='Your account is pending admin approval. Please wait.';return}
+  setSession(u);document.getElementById('loginScreen').style.display='none';updateUserChip(u);document.getElementById('appShell').style.display='block';showSection(u.role==='admin'?'dashboard':'userdash');showToast('Welcome, '+u.name+'!');
+  if(u.role!=='admin'){setTimeout(async()=>{await loadCloudConfig().catch(()=>{});await odLoadFromOneDrive(false).catch(()=>{});startManagerAutoSync();},500);}else{setTimeout(async()=>{await odLoadFromOneDrive(false).catch(()=>{});startTokenAutoRenew();},500);}
+}
 function doLogin(){
   const input=document.getElementById('loginUser').value.trim().toLowerCase();
   const pw=document.getElementById('loginPass').value;
