@@ -84,14 +84,32 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider !== 'azure-ad') return true;
       if (!user.email) return false;
 
-      const dbUser = await prisma.user.findUnique({ where: { email: user.email.toLowerCase() } });
-      if (!dbUser) return '/login?error=NotProvisioned';
+      const email = user.email.toLowerCase();
+      let dbUser = await prisma.user.findUnique({ where: { email } });
+
+      if (!dbUser) {
+        // Auto-provision: any Microsoft account from our tenant can sign
+        // in without an admin creating the row first. New accounts land
+        // on the lowest-privilege role with no tracker access yet -- an
+        // admin still grants individual trackers from Settings -> User
+        // Access, this just removes the "ask admin to create my account"
+        // step. Since Azure AD is configured single-tenant, only real
+        // accounts in our Microsoft tenant can ever reach this branch.
+        dbUser = await prisma.user.create({
+          data: {
+            email,
+            name: user.name || email.split('@')[0],
+            role: 'staff',
+            allowedTrackers: []
+          }
+        });
+      }
 
       // Keep the display name in sync with Microsoft's, and stamp the
       // Prisma id + role onto the `user` object so the jwt callback below
       // (which runs right after this) can read them.
       if (dbUser.name !== user.name && user.name) {
-        await prisma.user.update({ where: { id: dbUser.id }, data: { name: user.name } });
+        dbUser = await prisma.user.update({ where: { id: dbUser.id }, data: { name: user.name } });
       }
       (user as any).id = dbUser.id;
       (user as any).role = dbUser.role;
