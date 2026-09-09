@@ -27,12 +27,7 @@ function LoginForm() {
   const [msLoading, setMsLoading] = useState(false);
 
   const urlError = searchParams.get('error');
-  const notProvisionedMessage =
-    urlError === 'NotProvisioned'
-      ? "That Microsoft account isn't set up here yet. Ask an admin to add you in Settings → User Access."
-      : urlError
-        ? 'Sign-in failed. Please try again.'
-        : '';
+  const notProvisionedMessage = urlError ? 'Sign-in failed. Please try again.' : '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,7 +131,7 @@ function LoginForm() {
           </form>
         </div>
         <p className="mt-5 text-center text-[13px] text-zinc-500">
-          Don't have access? Ask your admin to add your account.
+          First time here? Signing in with Microsoft creates your account automatically.
         </p>
       </motion.div>
     </div>
