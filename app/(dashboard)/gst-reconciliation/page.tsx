@@ -57,7 +57,7 @@ export default function GstReconciliationPage() {
   async function load() {
     setLoading(true);
     const res = await fetch('/api/gst-reconciliation');
-    setRows(await res.json());
+    if (res.ok) setRows(await res.json());
     setLoading(false);
   }
 

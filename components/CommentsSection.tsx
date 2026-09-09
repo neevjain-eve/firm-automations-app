@@ -26,7 +26,7 @@ export default function CommentsSection({
   async function load() {
     setLoading(true);
     const res = await fetch(`/api/comments?entityType=${entityType}&entityId=${entityId}`);
-    setComments(await res.json());
+    if (res.ok) setComments(await res.json());
     setLoading(false);
   }
 

@@ -73,11 +73,12 @@ export default function AdminUsersClient() {
 
     // Optimistic update so checkboxes feel instant.
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, allowedTrackers: next } : u)));
-    await fetch(`/api/admin/users/${user.id}`, {
+    const res = await fetch(`/api/admin/users/${user.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ allowedTrackers: next })
     });
+    if (!res.ok) load(); // revert to server state if it was rejected
   }
 
   async function changeRole(user: AdminUser, nextRole: string) {

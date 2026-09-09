@@ -29,8 +29,8 @@ export default function ConnectionsCard() {
 
   async function load() {
     const res = await fetch('/api/admin/connections');
-    if (res.status === 401) {
-      // Not an admin -- the card just doesn't render.
+    if (!res.ok) {
+      // Not an admin, or the request failed -- the card just doesn't render.
       setStatus(null);
       setLoading(false);
       return;

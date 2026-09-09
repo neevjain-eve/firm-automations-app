@@ -52,7 +52,7 @@ export default function LeaseAgreementPage() {
   async function load() {
     setLoading(true);
     const res = await fetch('/api/lease-agreement');
-    setLeases(await res.json());
+    if (res.ok) setLeases(await res.json());
     setLoading(false);
   }
 

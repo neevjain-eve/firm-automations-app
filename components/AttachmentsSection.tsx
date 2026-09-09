@@ -36,7 +36,7 @@ export default function AttachmentsSection({
   async function load() {
     setLoading(true);
     const res = await fetch(`/api/attachments?entityType=${entityType}&entityId=${entityId}`);
-    setFiles(await res.json());
+    if (res.ok) setFiles(await res.json());
     setLoading(false);
   }
 
