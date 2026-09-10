@@ -61,9 +61,9 @@ function LoginForm() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-2 rounded-xl bg-white px-5 py-3"
+            className="mb-2 inline-block w-fit rounded-md bg-white px-4 py-2.5"
           >
-            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="w-full max-w-[220px]" />
+            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="h-auto w-[190px]" />
           </motion.div>
           <p className="mt-1 text-[13px] text-zinc-500">Sign in to continue</p>
         </div>
