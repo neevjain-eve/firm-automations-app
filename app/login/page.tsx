@@ -57,14 +57,14 @@ function LoginForm() {
         className="relative w-full max-w-[380px]"
       >
         <div className="mb-8 flex flex-col items-center">
-          <motion.img
-            src="/pdka-logo.png"
-            alt="P. Dilip Kumar & Associates"
+          <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-4 h-10 w-auto"
-          />
+            className="mb-4 rounded-lg bg-white px-4 py-2.5"
+          >
+            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="h-8 w-auto" />
+          </motion.div>
           <h1 className="text-xl font-semibold tracking-tight text-white">
             Sign in to PDKA APP
           </h1>
