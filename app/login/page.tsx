@@ -57,16 +57,16 @@ function LoginForm() {
         className="relative w-full max-w-[380px]"
       >
         <div className="mb-8 flex flex-col items-center">
-          <motion.div
+          <motion.img
+            src="/pdka-logo.png"
+            alt="P. Dilip Kumar & Associates"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-accent-400 via-accent-500 to-violet-600 text-sm font-bold text-white shadow-glow-lg"
-          >
-            FA
-          </motion.div>
+            className="mb-4 h-10 w-auto"
+          />
           <h1 className="text-xl font-semibold tracking-tight text-white">
-            Sign in to Firm Automations
+            Sign in to PDKA APP
           </h1>
           <p className="mt-1 text-[13px] text-zinc-500">Use your firm account to continue.</p>
         </div>

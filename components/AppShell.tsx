@@ -64,12 +64,10 @@ export default function AppShell({
     <div className="flex min-h-screen bg-zinc-950">
       {/* Sidebar */}
       <aside className="flex w-64 shrink-0 flex-col border-r border-white/5 bg-zinc-950">
-        <div className="flex items-center gap-2.5 px-6 py-6">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-400 via-accent-500 to-violet-600 text-xs font-bold text-white shadow-glow">
-            FA
-          </div>
-          <span className="text-[15px] font-semibold tracking-tight text-white">
-            Firm Automations
+        <div className="flex flex-col gap-2 px-6 py-6">
+          <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="h-7 w-auto" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            PDKA APP
           </span>
         </div>
         <nav className="flex-1 space-y-0.5 px-3">
@@ -118,7 +116,7 @@ export default function AppShell({
         )}
         <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-white/5 bg-zinc-950/70 px-8 py-4 backdrop-blur-md">
           <div className="flex items-center gap-2 text-[13px] text-zinc-600">
-            <span>Firm Automations</span>
+            <span>PDKA APP</span>
             {currentPage && currentPage.href !== '/' && (
               <>
                 <span className="text-zinc-700">/</span>

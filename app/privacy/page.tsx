@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Privacy Policy - Firm Automations'
+  title: 'Privacy Policy - PDKA APP'
 };
 
 export default function PrivacyPage() {
@@ -9,7 +9,7 @@ export default function PrivacyPage() {
       <p className="mt-2 text-sm text-slate-500">Last updated: 24 July 2026</p>
 
       <p className="mt-6">
-        Firm Automations ("this app") is an internal tool built for staff at this firm
+        PDKA APP ("this app") is an internal tool built for staff at this firm
         to run accounting and finance automations. It is not distributed publicly and
         is not intended for use outside the firm. This page explains what data the
         app collects and how it is used.

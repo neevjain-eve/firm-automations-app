@@ -6,7 +6,7 @@ import Providers from '@/components/Providers';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Firm Automations',
+  title: 'PDKA APP',
   description: 'Internal automation dashboard',
   manifest: '/manifest.json',
   icons: {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Firm Automations'
+    title: 'PDKA APP'
   }
 };
 

@@ -1,8 +1,8 @@
 {
   "packageId": "com.firmautomations.app",
   "host": "firm-app-orpin.vercel.app",
-  "name": "Firm Automations",
-  "launcherName": "Firm Automations",
+  "name": "PDKA APP",
+  "launcherName": "PDKA APP",
   "display": "standalone",
   "themeColor": "#0F172AFF",
   "themeColorDark": "#0F172AFF",
