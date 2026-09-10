@@ -61,14 +61,11 @@ function LoginForm() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="mb-4 rounded-lg bg-white px-4 py-2.5"
+            className="mb-2 rounded-xl bg-white px-5 py-3"
           >
-            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="h-8 w-auto" />
+            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="w-full max-w-[220px]" />
           </motion.div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">
-            Sign in to PDKA APP
-          </h1>
-          <p className="mt-1 text-[13px] text-zinc-500">Use your firm account to continue.</p>
+          <p className="mt-1 text-[13px] text-zinc-500">Sign in to continue</p>
         </div>
 
         <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-card backdrop-blur-xl">

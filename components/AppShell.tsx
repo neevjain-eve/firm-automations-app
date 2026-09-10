@@ -64,13 +64,8 @@ export default function AppShell({
     <div className="flex min-h-screen bg-zinc-950">
       {/* Sidebar */}
       <aside className="flex w-64 shrink-0 flex-col border-r border-white/5 bg-zinc-950">
-        <div className="flex flex-col gap-2 px-6 py-6">
-          <div className="w-fit rounded-md bg-white px-2.5 py-1.5">
-            <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="h-6 w-auto" />
-          </div>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-            PDKA APP
-          </span>
+        <div className="flex items-center justify-center border-b border-black/10 bg-white px-3 py-3.5">
+          <img src="/pdka-logo.png" alt="P. Dilip Kumar & Associates" className="w-full max-w-[168px]" />
         </div>
         <nav className="flex-1 space-y-0.5 px-3">
           {nav.map((item) => {
