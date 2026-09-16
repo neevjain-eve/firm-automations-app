@@ -21,13 +21,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#09090b'
+  themeColor: '#0f1922'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} dark`}>
-      <body className="bg-zinc-950 font-sans text-zinc-100 antialiased">
+      <body className="bg-ink-950 font-sans text-ink-50 antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
