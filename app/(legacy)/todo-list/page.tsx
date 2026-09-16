@@ -11,6 +11,12 @@
 // deploys and cold starts. The app has its own independent login (admin /
 // manager / employee), separate from Firm Automations accounts, exactly as
 // it did in the original repo.
+//
+// Single sign-on: app.js now tries POST /api/legacy-todo/sso-login on load
+// before showing its own login screen. That route trusts this app's own
+// NextAuth session (already required to reach this page at all) instead of
+// a Microsoft Graph token, and matches/auto-provisions the same employee
+// records ms-login.js does -- so no second Microsoft popup is needed.
 export default function ToDoListPage() {
   return (
     <iframe

@@ -702,4 +702,21 @@ function showFatal(e) {
   alert(e.message || 'Something went wrong. Please try again.');
 }
 
-if (session && session.token) enterApp();
+if (session && session.token) {
+  enterApp();
+} else {
+  // Single sign-on: if we're already signed into the main PDKA APP (this
+  // page only loads inside its iframe once that login has succeeded), skip
+  // this tracker's own login screen and sign in as that same person
+  // automatically. Falls back to the normal login screen untouched if this
+  // fails for any reason (e.g. account deactivated).
+  fetch('/api/legacy-todo/sso-login', { method: 'POST' })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (result) {
+      if (!result.ok) return;
+      session = result.data;
+      localStorage.setItem('etm_session', JSON.stringify(session));
+      enterApp();
+    })
+    .catch(function () {});
+}

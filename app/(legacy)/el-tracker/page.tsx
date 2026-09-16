@@ -1,5 +1,7 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
+
 // Literal copy of the original Agreement-Tracker-PDKA GitHub app: this
 // iframe loads its unmodified UI/business logic (public/legacy/el-tracker/
 // index.html), including its own IndexedDB-based offline merge/conflict
@@ -12,10 +14,22 @@
 // bills, client tasks, the in-app staff login screen, rendering -- is
 // untouched. First-time setup uses a default admin login (admin / admin123)
 // -- change it after first sign-in.
+//
+// Single sign-on: since this page only ever loads for someone already
+// signed into the main app, we pass their email/name into the iframe as
+// query params. The tracker's own login screen (ssoAutoLogin(), added
+// inside index.html) matches or auto-provisions a local staff account for
+// that email and signs them straight in -- no second Microsoft popup.
 export default function ElTrackerPage() {
+  const { data: session } = useSession();
+  const email = session?.user?.email;
+  const name = session?.user?.name;
+  const src = email
+    ? `/legacy/el-tracker/index.html?ssoEmail=${encodeURIComponent(email)}${name ? `&ssoName=${encodeURIComponent(name)}` : ''}`
+    : '/legacy/el-tracker/index.html';
   return (
     <iframe
-      src="/legacy/el-tracker/index.html"
+      src={src}
       title="EL Tracker"
       style={{ width: '100%', height: '100vh', border: 'none', background: '#fff' }}
     />

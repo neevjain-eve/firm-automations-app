@@ -4757,6 +4757,25 @@ async function msLogin(){
   setSession(u);document.getElementById('loginScreen').style.display='none';updateUserChip(u);document.getElementById('appShell').style.display='block';showSection(u.role==='admin'?'dashboard':'userdash');showToast('Welcome, '+u.name+'!');
   if(u.role!=='admin'){setTimeout(async()=>{await loadCloudConfig().catch(()=>{});await odLoadFromOneDrive(false).catch(()=>{});startManagerAutoSync();},500);}else{setTimeout(async()=>{await odLoadFromOneDrive(false).catch(()=>{});startTokenAutoRenew();},500);}
 }
+function ssoAutoLogin(){
+  if(getSession())return;
+  try{
+    const params=new URLSearchParams(location.search);
+    const email=(params.get('ssoEmail')||'').toLowerCase().trim();
+    if(!email)return;
+    const name=params.get('ssoName')||email.split('@')[0];
+    const localPart=email.split('@')[0];
+    const users=getUsers();
+    let u=users.find(x=>(x.email&&x.email.toLowerCase()===email)||x.username.toLowerCase()===localPart);
+    if(!u){
+      u={id:'u'+Date.now(),username:localPart,name,email,role:'user',pwHash:'',status:'active'};
+      users.push(u);
+      saveUsers(users);
+    }
+    if(u.status==='pending')return;
+    setSession(u);
+  }catch(e){}
+}
 function doLogin(){
   const input=document.getElementById('loginUser').value.trim().toLowerCase();
   const pw=document.getElementById('loginPass').value;
@@ -7445,6 +7464,7 @@ function showComposeError(msg){const el=document.getElementById('composeError');
     loadCloudConfig().then(()=>{}).catch(()=>{});
   },1800000);
   checkPwResetToken();
+  ssoAutoLogin();
   const s=getSession();
   if(s&&isZohoConnected()){setTimeout(()=>{zohoLoadAllData().then(()=>{}).catch(()=>{});startZohoAutoSync();},800);}
   if(s){document.getElementById("loginScreen").style.display="none";document.getElementById("appShell").style.display="block";updateUserChip(s);showSection(s.role==="admin"?"dashboard":"userdash");if(s.role!=='admin'){setTimeout(async()=>{await loadCloudConfig().catch(()=>{});await odLoadFromOneDrive(false).catch(()=>{});startManagerAutoSync();},1000);}}
