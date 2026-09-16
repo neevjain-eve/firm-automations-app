@@ -31,18 +31,20 @@ module.exports = {
           900: '#5c3a02'
         },
         // Neutral scale built from brand blue-grey (#1F5880) — replaces zinc.
+        // Lifted in lightness/saturation vs. a first pass that read as
+        // generic near-black charcoal instead of a branded navy.
         ink: {
-          50: '#f3f7fa',
-          100: '#e4ecf2',
-          200: '#c9d8e3',
-          300: '#a6bdce',
-          400: '#7d9ab0',
-          500: '#5c7c93',
-          600: '#45627a',
-          700: '#344c5d',
-          800: '#24384a',
-          900: '#182634',
-          950: '#0f1922'
+          50: '#f4f7f9',
+          100: '#e3e9ee',
+          200: '#c8d3da',
+          300: '#a2b6c3',
+          400: '#7899b0',
+          500: '#547f9c',
+          600: '#426780',
+          700: '#314f63',
+          800: '#243b4a',
+          900: '#192a36',
+          950: '#121e26'
         },
         warning: '#c99a2e'
       },

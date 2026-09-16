@@ -118,12 +118,12 @@ export default function AppShell({
                       <>
                         <motion.span
                           layoutId="nav-active-bg"
-                          className="absolute inset-0 rounded-lg bg-ink-800/80"
+                          className="absolute inset-0 rounded-lg bg-accent-500/[0.14] ring-1 ring-inset ring-accent-500/20"
                           transition={{ type: 'spring', stiffness: 420, damping: 38 }}
                         />
                         <motion.span
                           layoutId="nav-active-bar"
-                          className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-full bg-accent-500"
+                          className="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-full bg-accent-500 shadow-[0_0_10px_0_rgb(248_160_6_/_0.6)]"
                           transition={{ type: 'spring', stiffness: 420, damping: 38 }}
                         />
                       </>
@@ -192,7 +192,7 @@ export default function AppShell({
                     <p className="text-title-sm font-medium text-white">{user.name}</p>
                     <p className="text-body-sm text-ink-500">{user.email}</p>
                     {user.role && (
-                      <span className="mt-1.5 inline-block rounded-full bg-accent-500/10 px-2 py-0.5 text-caption font-medium uppercase tracking-wide text-accent-400">
+                      <span className="mt-1.5 inline-block rounded-full bg-accent-500/[0.18] px-2 py-0.5 text-caption font-medium uppercase tracking-wide text-accent-300">
                         {user.role}
                       </span>
                     )}
