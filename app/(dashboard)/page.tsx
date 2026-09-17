@@ -9,7 +9,6 @@ export default async function DashboardPage() {
 
   const firstName = (session?.user?.name ?? session?.user?.email ?? 'there').split(' ')[0];
   const visibleAutomations = automations.filter((a) => hasTrackerAccess(session?.user as any, a.id));
-  const liveCount = visibleAutomations.filter((a) => a.status === 'live').length;
 
   return (
     <div>
@@ -32,9 +31,6 @@ export default async function DashboardPage() {
               {firstName}.
             </span>
           </h1>
-          <p className="mt-3 text-[14px] text-zinc-400">
-            {liveCount} automation{liveCount === 1 ? '' : 's'} ready to use.
-          </p>
         </div>
       </header>
 
