@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Plug } from 'lucide-react';
+import { CheckCircle2, XCircle, Plug, HardDrive } from 'lucide-react';
 
 type Status = {
   clientId: string;
@@ -10,6 +10,10 @@ type Status = {
   source: 'database' | 'env' | 'none';
   blobTokenSet: boolean;
   encryptionKeyConfigured: boolean;
+  oneDriveSiteId: string;
+  oneDriveDriveId: string;
+  oneDriveRootFolder: string;
+  oneDriveSource: 'database' | 'env' | 'none';
 };
 
 const inputClass =
@@ -23,9 +27,16 @@ export default function ConnectionsCard() {
   const [tenantId, setTenantId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [blobToken, setBlobToken] = useState('');
+  const [oneDriveSiteId, setOneDriveSiteId] = useState('');
+  const [oneDriveDriveId, setOneDriveDriveId] = useState('');
+  const [oneDriveRootFolder, setOneDriveRootFolder] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingOneDrive, setTestingOneDrive] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [oneDriveMessage, setOneDriveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null
+  );
 
   async function load() {
     const res = await fetch('/api/admin/connections');
@@ -39,6 +50,9 @@ export default function ConnectionsCard() {
     setStatus(data);
     setClientId(data.clientId);
     setTenantId(data.tenantId);
+    setOneDriveSiteId(data.oneDriveSiteId);
+    setOneDriveDriveId(data.oneDriveDriveId);
+    setOneDriveRootFolder(data.oneDriveRootFolder);
     setLoading(false);
   }
 
@@ -53,7 +67,15 @@ export default function ConnectionsCard() {
     const res = await fetch('/api/admin/connections', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId, tenantId, clientSecret, blobToken })
+      body: JSON.stringify({
+        clientId,
+        tenantId,
+        clientSecret,
+        blobToken,
+        oneDriveSiteId,
+        oneDriveDriveId,
+        oneDriveRootFolder
+      })
     });
     setSaving(false);
     const body = await res.json().catch(() => ({}));
@@ -76,6 +98,19 @@ export default function ConnectionsCard() {
     setMessage(
       body.ok
         ? { type: 'success', text: body.message ?? 'Credentials work.' }
+        : { type: 'error', text: body.error ?? 'Test failed.' }
+    );
+  }
+
+  async function testOneDrive() {
+    setOneDriveMessage(null);
+    setTestingOneDrive(true);
+    const res = await fetch('/api/admin/connections/onedrive-test', { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    setTestingOneDrive(false);
+    setOneDriveMessage(
+      body.ok
+        ? { type: 'success', text: body.message ?? 'Connected.' }
         : { type: 'error', text: body.error ?? 'Test failed.' }
     );
   }
@@ -166,6 +201,82 @@ export default function ConnectionsCard() {
           <p className="mt-1 text-[11px] text-zinc-600">
             Used for file attachments on trackers. Stored encrypted.
           </p>
+        </div>
+
+        <div className="border-t border-white/5 pt-3">
+          <div className="mb-2 flex items-center gap-1.5">
+            <HardDrive className="h-3.5 w-3.5 text-accent-400" />
+            <span className="text-[12.5px] font-medium text-zinc-300">OneDrive backend</span>
+            <span className="ml-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+              {status.oneDriveSource === 'database'
+                ? 'saved here'
+                : status.oneDriveSource === 'env'
+                  ? 'from Vercel env'
+                  : 'not set'}
+            </span>
+          </div>
+          <p className="mb-3 text-[11px] text-zinc-600">
+            SharePoint site tracker data and records are stored in, once the app registration above has
+            the <span className="font-mono text-zinc-500">Files.ReadWrite.All</span> Application
+            permission with admin consent granted.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className={labelClass}>SharePoint site ID</label>
+              <input
+                value={oneDriveSiteId}
+                onChange={(e) => setOneDriveSiteId(e.target.value)}
+                className={inputClass}
+                placeholder="contoso.sharepoint.com,11111111-...,22222222-..."
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Drive ID (optional)</label>
+              <input
+                value={oneDriveDriveId}
+                onChange={(e) => setOneDriveDriveId(e.target.value)}
+                className={inputClass}
+                placeholder="Leave blank to use the site's default document library"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Root folder</label>
+              <input
+                value={oneDriveRootFolder}
+                onChange={(e) => setOneDriveRootFolder(e.target.value)}
+                className={inputClass}
+                placeholder="PDKA Data"
+              />
+              <p className="mt-1 text-[11px] text-zinc-600">
+                Everything the app reads/writes stays nested under this folder, even though the Graph
+                permission itself is tenant-wide.
+              </p>
+            </div>
+          </div>
+
+          {oneDriveMessage && (
+            <p
+              className={`mt-3 flex items-center gap-1.5 text-[12.5px] ${
+                oneDriveMessage.type === 'error' ? 'text-red-400' : 'text-emerald-400'
+              }`}
+            >
+              {oneDriveMessage.type === 'error' ? (
+                <XCircle className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              )}
+              {oneDriveMessage.text}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={testOneDrive}
+            disabled={testingOneDrive}
+            className="mt-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/10 disabled:opacity-50"
+          >
+            {testingOneDrive ? 'Testing…' : 'Test OneDrive connection'}
+          </button>
         </div>
 
         {message && (

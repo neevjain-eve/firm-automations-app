@@ -5,8 +5,10 @@ import { encryptionKeyConfigured } from '@/lib/crypto';
 import {
   AZURE_KEYS,
   STORAGE_KEYS,
+  ONEDRIVE_KEYS,
   getAzureAdConfig,
   getBlobToken,
+  getOneDriveConfig,
   writeSetting,
   deleteSetting
 } from '@/lib/settings';
@@ -25,13 +27,18 @@ export async function GET() {
 
   const config = await getAzureAdConfig();
   const blobToken = await getBlobToken();
+  const oneDrive = await getOneDriveConfig();
   return NextResponse.json({
     clientId: config.clientId ?? '',
     tenantId: config.tenantId ?? '',
     clientSecretSet: !!config.clientSecret,
     source: config.source,
     blobTokenSet: !!blobToken,
-    encryptionKeyConfigured: encryptionKeyConfigured()
+    encryptionKeyConfigured: encryptionKeyConfigured(),
+    oneDriveSiteId: oneDrive.siteId ?? '',
+    oneDriveDriveId: oneDrive.driveId ?? '',
+    oneDriveRootFolder: oneDrive.rootFolder,
+    oneDriveSource: oneDrive.source
   });
 }
 
@@ -41,7 +48,15 @@ export async function PUT(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const { clientId, tenantId, clientSecret, blobToken } = await req.json();
+  const {
+    clientId,
+    tenantId,
+    clientSecret,
+    blobToken,
+    oneDriveSiteId,
+    oneDriveDriveId,
+    oneDriveRootFolder
+  } = await req.json();
 
   if ((clientSecret || blobToken) && !encryptionKeyConfigured()) {
     return NextResponse.json(
@@ -70,6 +85,21 @@ export async function PUT(req: NextRequest) {
     }
     if (typeof blobToken === 'string' && blobToken.trim()) {
       await writeSetting(STORAGE_KEYS.blobToken, blobToken.trim(), true);
+    }
+    if (typeof oneDriveSiteId === 'string') {
+      oneDriveSiteId.trim()
+        ? await writeSetting(ONEDRIVE_KEYS.siteId, oneDriveSiteId.trim(), false)
+        : await deleteSetting(ONEDRIVE_KEYS.siteId);
+    }
+    if (typeof oneDriveDriveId === 'string') {
+      oneDriveDriveId.trim()
+        ? await writeSetting(ONEDRIVE_KEYS.driveId, oneDriveDriveId.trim(), false)
+        : await deleteSetting(ONEDRIVE_KEYS.driveId);
+    }
+    if (typeof oneDriveRootFolder === 'string') {
+      oneDriveRootFolder.trim()
+        ? await writeSetting(ONEDRIVE_KEYS.rootFolder, oneDriveRootFolder.trim(), false)
+        : await deleteSetting(ONEDRIVE_KEYS.rootFolder);
     }
   } catch (err) {
     return NextResponse.json(

@@ -11,6 +11,19 @@ export const STORAGE_KEYS = {
   blobToken: 'blob_read_write_token'
 } as const;
 
+// SharePoint/OneDrive location used by the OneDrive backend (lib/onedrive/*).
+// siteId identifies the SharePoint site (e.g. "contoso.sharepoint.com,<site
+// guid>,<web guid>" -- the /sites/{site-id} form Graph expects). driveId is
+// optional: leave it unset to use the site's default document library.
+// rootFolder is the folder inside that drive everything is nested under
+// (default "PDKA Data"), so this app never touches files outside its own
+// sandbox even though the Files.ReadWrite.All permission is tenant-wide.
+export const ONEDRIVE_KEYS = {
+  siteId: 'onedrive_site_id',
+  driveId: 'onedrive_drive_id',
+  rootFolder: 'onedrive_root_folder'
+} as const;
+
 // Four env vars can never move in here, by definition:
 //   DATABASE_URL / DIRECT_URL  - needed to reach this table in the first place
 //   NEXTAUTH_SECRET            - middleware verifies JWTs on the edge runtime,
@@ -25,6 +38,13 @@ export type AzureAdConfig = {
   tenantId: string | null;
   // Where each value came from, so the UI can show "set in Vercel" vs
   // "set here" and admins aren't confused about which one is live.
+  source: 'database' | 'env' | 'none';
+};
+
+export type OneDriveConfig = {
+  siteId: string | null;
+  driveId: string | null;
+  rootFolder: string;
   source: 'database' | 'env' | 'none';
 };
 
@@ -102,4 +122,45 @@ export async function getAzureAdConfig(): Promise<AzureAdConfig> {
   }
 
   return { clientId: null, clientSecret: null, tenantId: null, source: 'none' };
+}
+
+// Same precedence rule as everything else: Settings -> Connections wins,
+// env vars are the fallback. rootFolder always has a value (defaults to
+// "PDKA Data") since an empty root folder would mean writing to the drive's
+// actual root, which nothing here should ever do by accident.
+export async function getOneDriveConfig(): Promise<OneDriveConfig> {
+  let siteId: string | null = null;
+  let driveId: string | null = null;
+  let rootFolder: string | null = null;
+
+  try {
+    [siteId, driveId, rootFolder] = await Promise.all([
+      readSetting(ONEDRIVE_KEYS.siteId, false),
+      readSetting(ONEDRIVE_KEYS.driveId, false),
+      readSetting(ONEDRIVE_KEYS.rootFolder, false)
+    ]);
+  } catch {
+    // Database unreachable -- fall through to env vars.
+  }
+
+  if (siteId) {
+    return {
+      siteId,
+      driveId: driveId ?? process.env.ONEDRIVE_DRIVE_ID ?? null,
+      rootFolder: rootFolder ?? process.env.ONEDRIVE_ROOT_FOLDER ?? 'PDKA Data',
+      source: 'database'
+    };
+  }
+
+  const envSiteId = process.env.ONEDRIVE_SITE_ID ?? null;
+  if (envSiteId) {
+    return {
+      siteId: envSiteId,
+      driveId: process.env.ONEDRIVE_DRIVE_ID ?? null,
+      rootFolder: process.env.ONEDRIVE_ROOT_FOLDER ?? 'PDKA Data',
+      source: 'env'
+    };
+  }
+
+  return { siteId: null, driveId: null, rootFolder: 'PDKA Data', source: 'none' };
 }
