@@ -29,6 +29,13 @@ const providers: NextAuthOptions['providers'] = [
       const valid = await bcrypt.compare(credentials.password, dbUser.password);
       if (!valid) return null;
 
+      // Pending/rejected accounts exist as a row but can't sign in yet --
+      // throwing here (rather than returning null) lets the login page
+      // show a specific message instead of "incorrect email or password".
+      if (dbUser.status !== 'approved') {
+        throw new Error(dbUser.status === 'rejected' ? 'AccountRejected' : 'PendingApproval');
+      }
+
       return {
         id: dbUser.id,
         name: dbUser.name,
@@ -46,7 +53,10 @@ if (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET && proc
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-      tenantId: process.env.AZURE_AD_TENANT_ID
+      tenantId: process.env.AZURE_AD_TENANT_ID,
+      // Always show Microsoft's account picker instead of silently
+      // reusing whatever session is already cached in the browser.
+      authorization: { params: { prompt: 'select_account' } }
     })
   );
 }
@@ -65,7 +75,8 @@ export async function buildAuthOptions(): Promise<NextAuthOptions> {
       AzureADProvider({
         clientId: azure.clientId,
         clientSecret: azure.clientSecret,
-        tenantId: azure.tenantId
+        tenantId: azure.tenantId,
+        authorization: { params: { prompt: 'select_account' } }
       })
     );
   }
@@ -88,21 +99,25 @@ export const authOptions: NextAuthOptions = {
       let dbUser = await prisma.user.findUnique({ where: { email } });
 
       if (!dbUser) {
-        // Auto-provision: any Microsoft account from our tenant can sign
-        // in without an admin creating the row first. New accounts land
-        // on the lowest-privilege role with no tracker access yet -- an
-        // admin still grants individual trackers from Settings -> User
-        // Access, this just removes the "ask admin to create my account"
-        // step. Since Azure AD is configured single-tenant, only real
-        // accounts in our Microsoft tenant can ever reach this branch.
+        // Auto-provision a row on first Microsoft sign-in, but as "pending"
+        // -- it still needs an admin to approve it from /admin before this
+        // person can actually sign in. Since Azure AD is configured
+        // single-tenant, only real accounts in our Microsoft tenant can
+        // ever reach this branch.
         dbUser = await prisma.user.create({
           data: {
             email,
             name: user.name || email.split('@')[0],
             role: 'staff',
-            allowedTrackers: []
+            allowedTrackers: [],
+            status: 'pending'
           }
         });
+        return '/login?error=PendingApproval';
+      }
+
+      if (dbUser.status !== 'approved') {
+        return `/login?error=${dbUser.status === 'rejected' ? 'AccountRejected' : 'PendingApproval'}`;
       }
 
       // Keep the display name in sync with Microsoft's, and stamp the

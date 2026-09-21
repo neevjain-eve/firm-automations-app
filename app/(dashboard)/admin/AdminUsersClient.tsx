@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Check, X, RotateCcw } from 'lucide-react';
 
 const TRACKERS = [
   { key: 'status-tracker', label: 'Status Tracker' },
@@ -19,6 +19,8 @@ type AdminUser = {
   role: 'staff' | 'manager' | 'admin';
   allowedTrackers: string[];
   hasPassword: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
 };
 
 const inputClass =
@@ -28,6 +30,7 @@ export default function AdminUsersClient() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [decidingId, setDecidingId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -63,6 +66,22 @@ export default function AdminUsersClient() {
     setName('');
     setEmail('');
     setRole('staff');
+    load();
+  }
+
+  async function decide(user: AdminUser, status: 'approved' | 'rejected') {
+    setDecidingId(user.id);
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    setDecidingId(null);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error ?? 'Could not update this account.');
+      return;
+    }
     load();
   }
 
@@ -102,8 +121,53 @@ export default function AdminUsersClient() {
     load();
   }
 
+  const pending = users.filter((u) => u.status === 'pending');
+  const decided = users.filter((u) => u.status !== 'pending');
+
   return (
     <div className="space-y-8">
+      {pending.length > 0 && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-5 shadow-soft backdrop-blur-sm">
+          <h2 className="mb-3 text-[13px] font-semibold text-amber-300">
+            Pending approvals <span className="text-zinc-500">({pending.length})</span>
+          </h2>
+          <div className="space-y-2">
+            {pending.map((user) => (
+              <div
+                key={user.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5"
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">{user.name}</p>
+                  <p className="text-[11px] text-zinc-600">{user.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={decidingId === user.id}
+                    onClick={() => decide(user, 'approved')}
+                    className="flex items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1.5 text-[12.5px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Approve
+                  </button>
+                  <button
+                    disabled={decidingId === user.id}
+                    onClick={() => decide(user, 'rejected')}
+                    className="flex items-center gap-1 rounded-md bg-red-500/10 px-2.5 py-1.5 text-[12.5px] font-medium text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[12px] text-zinc-500">
+            Requests from self sign-up and first-time Microsoft sign-in land here until approved.
+          </p>
+        </div>
+      )}
+
       <form
         onSubmit={addUser}
         className="rounded-xl border border-white/10 bg-white/[0.03] p-5 shadow-soft backdrop-blur-sm"
@@ -140,7 +204,8 @@ export default function AdminUsersClient() {
         </div>
         {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
         <p className="mt-2 text-[12px] text-zinc-600">
-          They'll sign in with this email via "Sign in with Microsoft" — no password to set up.
+          Accounts added here are approved automatically -- they can sign in with this email via
+          "Sign in with Microsoft", no password to set up.
         </p>
       </form>
 
@@ -165,18 +230,26 @@ export default function AdminUsersClient() {
                   Loading…
                 </td>
               </tr>
-            ) : users.length === 0 ? (
+            ) : decided.length === 0 ? (
               <tr>
                 <td colSpan={TRACKERS.length + 3} className="px-4 py-6 text-center text-zinc-600">
                   No accounts yet.
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
-                <tr key={user.id} className="border-b border-white/5 last:border-0">
+              decided.map((user) => (
+                <tr
+                  key={user.id}
+                  className={`border-b border-white/5 last:border-0 ${user.status === 'rejected' ? 'opacity-50' : ''}`}
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium text-white">{user.name}</p>
                     <p className="text-[11px] text-zinc-600">{user.email}</p>
+                    {user.status === 'rejected' && (
+                      <span className="mt-1 inline-block rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-400">
+                        Declined
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <select
@@ -200,14 +273,25 @@ export default function AdminUsersClient() {
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => removeUser(user)}
-                      className="rounded-md p-1.5 text-zinc-600 hover:bg-red-500/10 hover:text-red-400"
-                      title="Remove account"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      {user.status === 'rejected' && (
+                        <button
+                          onClick={() => decide(user, 'approved')}
+                          className="rounded-md p-1.5 text-zinc-600 hover:bg-emerald-500/10 hover:text-emerald-400"
+                          title="Restore access"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removeUser(user)}
+                        className="rounded-md p-1.5 text-zinc-600 hover:bg-red-500/10 hover:text-red-400"
+                        title="Remove account"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -14,6 +14,11 @@ model User {
   name      String
   password  String?  // bcrypt hash -- optional; not needed once signed in via Microsoft/Azure AD
   role      String   @default("staff") // "staff" | "manager" | "admin"
+  // "pending" | "approved" | "rejected". Self-serve signups and first-time
+  // Microsoft sign-ins land on "pending" until an admin approves them from
+  // the /admin panel; accounts an admin creates directly default straight
+  // to "approved". Only "approved" accounts can actually sign in.
+  status    String   @default("approved")
   // Which trackers (by key, matching TRACKER_KEYS in lib/permissions.ts) this
   // account may open. Ignored for role "admin" (admins always see everything).
   // Set by an admin from the /admin user-management panel.

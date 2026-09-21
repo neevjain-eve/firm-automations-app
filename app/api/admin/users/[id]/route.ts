@@ -15,8 +15,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const { role, allowedTrackers } = await req.json();
-  const data: { role?: string; allowedTrackers?: string[] } = {};
+  const { role, allowedTrackers, status } = await req.json();
+  const data: { role?: string; allowedTrackers?: string[]; status?: string } = {};
 
   if (role !== undefined) {
     if (!['staff', 'manager', 'admin'].includes(role)) {
@@ -38,8 +38,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.allowedTrackers = allowedTrackers;
   }
 
+  // Approve/decline a pending signup, or restore a previously-declined one.
+  if (status !== undefined) {
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid status.' }, { status: 400 });
+    }
+    if (status !== 'approved' && (session.user as any).id === params.id) {
+      return NextResponse.json({ error: "You can't revoke your own approval here." }, { status: 400 });
+    }
+    data.status = status;
+  }
+
   const user = await prisma.user.update({ where: { id: params.id }, data });
-  return NextResponse.json({ id: user.id, role: user.role, allowedTrackers: user.allowedTrackers });
+  return NextResponse.json({
+    id: user.id,
+    role: user.role,
+    allowedTrackers: user.allowedTrackers,
+    status: user.status
+  });
 }
 
 // Remove a provisioned account entirely.

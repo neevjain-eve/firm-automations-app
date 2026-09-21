@@ -18,7 +18,16 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, email: true, role: true, allowedTrackers: true, createdAt: true, password: true }
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      allowedTrackers: true,
+      createdAt: true,
+      password: true,
+      status: true
+    }
   });
   // Never send password hashes to the client -- just whether one is set,
   // so the admin UI can show "Microsoft only" vs "has a fallback password".

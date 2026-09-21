@@ -31,8 +31,10 @@ export async function POST(req: NextRequest) {
 
   const hash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email: normalizedEmail, name, password: hash, role: 'staff' }
+    data: { email: normalizedEmail, name, password: hash, role: 'staff', status: 'pending' }
   });
 
-  return NextResponse.json({ id: user.id, email: user.email });
+  // Account exists but can't sign in yet -- an admin has to approve it
+  // from the /admin panel first.
+  return NextResponse.json({ id: user.id, email: user.email, status: user.status });
 }

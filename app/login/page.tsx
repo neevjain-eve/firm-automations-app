@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import AuthBackground from '@/components/AuthBackground';
 
 function MicrosoftIcon() {
@@ -27,7 +28,14 @@ function LoginForm() {
   const [msLoading, setMsLoading] = useState(false);
 
   const urlError = searchParams.get('error');
-  const notProvisionedMessage = urlError ? 'Sign-in failed. Please try again.' : '';
+  const notProvisionedMessage =
+    urlError === 'PendingApproval'
+      ? "Your account is awaiting admin approval. You'll be able to sign in once it's approved."
+      : urlError === 'AccountRejected'
+        ? 'This account request was declined. Contact an admin if you think this is a mistake.'
+        : urlError
+          ? 'Sign-in failed. Please try again.'
+          : '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +47,14 @@ function LoginForm() {
       redirect: false
     });
     setLoading(false);
+    if (res?.error === 'PendingApproval') {
+      setError("Your account is awaiting admin approval. You'll be able to sign in once it's approved.");
+      return;
+    }
+    if (res?.error === 'AccountRejected') {
+      setError('This account request was declined. Contact an admin if you think this is a mistake.');
+      return;
+    }
     if (res?.error) {
       setError('Incorrect email or password.');
       return;
@@ -128,7 +144,11 @@ function LoginForm() {
           </form>
         </div>
         <p className="mt-5 text-center text-[13px] text-zinc-500">
-          First time here? Signing in with Microsoft creates your account automatically.
+          First time here? Signing in with Microsoft or{' '}
+          <Link href="/signup" className="font-medium text-zinc-300 hover:text-accent-400">
+            signing up
+          </Link>{' '}
+          sends a request an admin approves before you can sign in.
         </p>
       </motion.div>
     </div>
