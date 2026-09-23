@@ -37,6 +37,9 @@ model User {
   policySignatures   PolicySignature[]
   comments           Comment[]
   attachments        Attachment[]
+  gstClients         GstClient[]
+  gstImportJobs      GstImportJob[]
+  gstDecisionsReviewed GstDecision[] @relation("GstDecisionReviewedBy")
 }
 
 // Admin-editable configuration that would otherwise live in env vars, set
@@ -160,8 +163,10 @@ model Agreement {
   @@index([endDate])
 }
 
-// GST Reconciliation tracker -- reconcile books vs GST portal figures per
-// filing period. Core basics only: no auto-import from the GST portal yet.
+// GST Reconciliation "Filing Status" tracker -- period-level: has the return been filed,
+// do the headline figures match. Simple, manual, kept as-is. The invoice-level engine
+// (GstClient / GstGstin / GstInvoice / GstDecision below) is the deeper reconciliation tool,
+// reachable from the same /gst-reconciliation section.
 model GstReconciliation {
   id             String    @id @default(cuid())
   period         String    // e.g. "Jul 2026"
@@ -316,4 +321,133 @@ model PolicySignature {
   signedAt      DateTime @default(now())
 
   @@unique([policyId, userId])
+}
+
+// ─────────────────────────── GST Reconciliation (invoice engine) ───────────────────────────
+// Adds invoice-level books-vs-GSTR-2B reconciliation on top of the period-level "Filing Status"
+// tracker above (GstReconciliation). Firm-wide, not per-user: any user with the gst-reconciliation
+// tracker permission can see all clients/GSTINs. Imported rows are never edited or deleted -- a new
+// import for the same GSTIN + period + source marks the previous rows `active: false` (kept for
+// audit) and inserts fresh ones; reconciliation decisions live in their own table, keyed by a
+// content-based matchKey so a staff member's review (accepted / flagged / note) survives re-imports
+// and re-runs as long as the same supplier GSTIN + invoice number reappears.
+
+model GstClient {
+  id        String   @id @default(cuid())
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById String
+  createdBy   User       @relation(fields: [createdById], references: [id])
+  gstins      GstGstin[]
+}
+
+model GstGstin {
+  id       String @id @default(cuid())
+  gstin    String @unique
+  label    String? // e.g. "Karnataka HO", "Mumbai branch"
+  clientId String
+  client   GstClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  importJobs GstImportJob[]
+  invoices   GstInvoice[]
+  decisions  GstDecision[]
+
+  @@index([clientId])
+}
+
+model GstImportJob {
+  id           String   @id @default(cuid())
+  gstinId      String
+  gstin        GstGstin @relation(fields: [gstinId], references: [id], onDelete: Cascade)
+  period       String // MMYYYY
+  source       String // "BOOKS" | "GSTR2B"
+  fileName     String?
+  totalRows    Int      @default(0)
+  importedRows Int      @default(0)
+  errorRows    Int      @default(0)
+  issues       Json?
+  startedAt    DateTime @default(now())
+
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  invoices    GstInvoice[]
+
+  @@index([gstinId, period, source])
+}
+
+model GstInvoice {
+  id                String   @id @default(cuid())
+  gstinId           String
+  gstin             GstGstin @relation(fields: [gstinId], references: [id], onDelete: Cascade)
+  importJobId       String
+  importJob         GstImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  period            String // MMYYYY this row belongs to
+  source            String // "BOOKS" | "GSTR2B"
+  active            Boolean  @default(true) // false once superseded by a newer import for the same gstin+period+source
+  docType           String   @default("INVOICE") // "INVOICE" | "CREDIT_NOTE" | "DEBIT_NOTE"
+  supplierGstin     String
+  supplierName      String?
+  invoiceNumber     String
+  invoiceNumberNorm String
+  invoiceDate       DateTime
+  taxableValue      Float    @default(0)
+  igst              Float    @default(0)
+  cgst              Float    @default(0)
+  sgst              Float    @default(0)
+  cess              Float    @default(0)
+  invoiceValue      Float?
+  itcEligible       Boolean  @default(true) // books side: is this bill ITC-eligible
+  itcAvailable      Boolean  @default(true) // GSTR-2B side: does the portal mark ITC as available
+  itcReason         String?
+  raw               Json? // original parsed row, kept for traceability
+  createdAt         DateTime @default(now())
+
+  @@index([gstinId, period, source, active])
+  @@index([supplierGstin, invoiceNumberNorm])
+}
+
+model GstDecision {
+  id              String    @id @default(cuid())
+  gstinId         String
+  gstin           GstGstin  @relation(fields: [gstinId], references: [id], onDelete: Cascade)
+  period          String
+  matchKey        String // supplierGstin|invoiceNumberNorm|I-or-C -- stable across re-imports
+  status          String // ReconStatusStr from lib/gst/engine.ts (MATCHED, NEEDS_REVIEW, ...)
+  matchMethod     String // EXACT | NORMALIZED | FUZZY | NONE
+  confidence      Int       @default(0)
+  explanation     String?   @db.Text
+  supplierGstin   String
+  supplierName    String?
+  invoiceNumber   String?
+  invoiceDate     DateTime?
+  booksTaxable    Float?
+  booksTax        Float?
+  gstr2bTaxable   Float?
+  gstr2bTax       Float?
+  taxableVariance Float     @default(0)
+  taxVariance     Float     @default(0)
+  booksItc        Float     @default(0)
+  gstr2bItc       Float     @default(0)
+  matchedItc      Float     @default(0)
+  bookInvoiceId   String?
+  gstr2bInvoiceId String?
+  differences     Json?
+
+  // Staff review, independent of the engine's own classification.
+  reviewStatus String    @default("OPEN") // "OPEN" | "ACCEPTED" | "FLAGGED" | "IGNORED"
+  reviewNote   String?   @db.Text
+  reviewedById String?
+  reviewedBy   User?     @relation("GstDecisionReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gstinId, period, matchKey])
+  @@index([gstinId, period, status])
 }

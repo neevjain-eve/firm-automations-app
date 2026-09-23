@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import CommentsSection from '@/components/CommentsSection';
 import AttachmentsSection from '@/components/AttachmentsSection';
 import { exportToExcel, parseExcelFile } from '@/lib/excel';
@@ -177,10 +179,24 @@ export default function GstReconciliationPage() {
     <div>
       <p className="mb-1.5 text-[13px] font-medium text-accent-400">Automation</p>
       <h1 className="mb-1 text-2xl font-semibold tracking-tight text-white">GST Reconciliation</h1>
-      <p className="mb-6 text-sm text-zinc-500">
-        Track GST filing periods and reconcile books figures against the GST portal. Prototype --
-        no auto-import from the GST portal yet.
+      <p className="mb-4 text-sm text-zinc-500">
+        Track GST filing periods at a glance below, or use invoice-level reconciliation to match every purchase bill against GSTR-2B.
       </p>
+
+      <Link
+        href="/gst-reconciliation/workspace"
+        className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent-500/20 bg-gradient-to-r from-accent-500/10 to-violet-600/10 p-4 shadow-soft backdrop-blur-sm transition-colors hover:border-accent-500/40"
+      >
+        <div>
+          <p className="text-sm font-medium text-white">Invoice reconciliation</p>
+          <p className="text-xs text-zinc-500">
+            Clients &amp; GSTINs, upload books / GSTR-2B, automatic matching, and a review tracker — for line-by-line ITC reconciliation.
+          </p>
+        </div>
+        <ArrowRight className="size-4 shrink-0 text-accent-400" />
+      </Link>
+
+      <h2 className="mb-3 text-sm font-semibold text-white">Filing status</h2>
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-soft backdrop-blur-sm">
