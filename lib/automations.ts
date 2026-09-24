@@ -32,11 +32,11 @@ export const automations: Automation[] = [
     href: '/gst-reconciliation'
   },
   {
-    id: 'lease-agreement',
-    name: 'Lease Agreement',
-    description: 'Track property/asset leases -- lessor, rent, and expiry.',
+    id: 'lease-ledger',
+    name: 'Lease Ledger',
+    description: 'Ind AS 116 lease accounting -- amortization schedules, ROU asset and liability tracking.',
     status: 'live',
-    href: '/lease-agreement'
+    href: '/lease-ledger'
   },
   {
     id: 'todo-list',

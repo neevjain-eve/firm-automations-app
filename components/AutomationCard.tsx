@@ -6,7 +6,7 @@ import {
   ListChecks,
   FileClock,
   Receipt,
-  Building2,
+  Calculator,
   CheckSquare2,
   PenTool,
   ArrowUpRight,
@@ -19,7 +19,7 @@ const ICONS: Record<string, LucideIcon> = {
   'status-tracker': ListChecks,
   'el-tracker': FileClock,
   'gst-reconciliation': Receipt,
-  'lease-agreement': Building2,
+  'lease-ledger': Calculator,
   'todo-list': CheckSquare2,
   'e-signature': PenTool
 };
@@ -28,7 +28,7 @@ const GRADIENTS: Record<string, string> = {
   'status-tracker': 'from-sky-400 to-blue-600',
   'el-tracker': 'from-amber-400 to-orange-600',
   'gst-reconciliation': 'from-emerald-400 to-teal-600',
-  'lease-agreement': 'from-fuchsia-400 to-purple-600',
+  'lease-ledger': 'from-fuchsia-400 to-purple-600',
   'todo-list': 'from-rose-400 to-pink-600',
   'e-signature': 'from-indigo-400 to-violet-600'
 };
