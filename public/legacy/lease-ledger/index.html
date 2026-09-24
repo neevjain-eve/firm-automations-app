@@ -1,0 +1,3560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lease Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  /* ============ Lease Ledger — design tokens ============ */
+  :root{
+    --bg:#F3F5F9;
+    --surface:#FFFFFF;
+    --surface-2:#F7F9FC;
+    --ink:#14213D;
+    --muted:#5D6A7E;
+    --faint:#8A96A8;
+    --border:#E2E7EF;
+    --line-strong:#CBD3E0;
+
+    --accent:#2F5BEA;          /* lease liability side */
+    --accent-ink:#FFFFFF;
+    --accent-soft:#EAF0FE;
+    --rou:#6E4BD8;             /* right-of-use asset side */
+    --rou-soft:#F1ECFD;
+    --good:#0E8F7E;
+    --good-soft:#E3F5F1;
+    --warn:#B7791F;
+    --warn-soft:#FBF2DF;
+    --bad:#C23B2B;
+    --bad-soft:#FCEBE8;
+
+    --side-bg:#14213D;
+    --side-ink:#EEF2FA;
+    --side-muted:#9AA8C2;
+    --side-line:rgba(255,255,255,.09);
+    --side-hover:rgba(255,255,255,.06);
+    --side-active:rgba(111,141,255,.20);
+    --side-field:rgba(255,255,255,.07);
+
+    --shadow-sm:0 1px 2px rgba(20,33,61,.06);
+    --shadow:0 1px 2px rgba(20,33,61,.05), 0 6px 20px rgba(20,33,61,.06);
+    --shadow-lg:0 20px 50px rgba(20,33,61,.22);
+    --radius:12px;
+    --ease:cubic-bezier(.2,.8,.3,1);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1320; --surface:#161D2D; --surface-2:#1B2436;
+      --ink:#E7ECF5; --muted:#98A5BB; --faint:#6F7C93;
+      --border:#27314A; --line-strong:#35415C;
+      --accent:#7390FF; --accent-ink:#0B1020; --accent-soft:#1D2A52;
+      --rou:#A78CFF; --rou-soft:#2A2250;
+      --good:#40C9B2; --good-soft:#12302C;
+      --warn:#E3AA4E; --warn-soft:#33270F;
+      --bad:#F08070; --bad-soft:#3A1C18;
+      --side-bg:#0A0F1A; --side-ink:#E7ECF5; --side-muted:#8391A9;
+      --side-line:rgba(255,255,255,.07); --side-hover:rgba(255,255,255,.05);
+      --side-active:rgba(115,144,255,.18); --side-field:rgba(255,255,255,.06);
+      --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --shadow-lg:0 24px 60px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1320; --surface:#161D2D; --surface-2:#1B2436;
+    --ink:#E7ECF5; --muted:#98A5BB; --faint:#6F7C93;
+    --border:#27314A; --line-strong:#35415C;
+    --accent:#7390FF; --accent-ink:#0B1020; --accent-soft:#1D2A52;
+    --rou:#A78CFF; --rou-soft:#2A2250;
+    --good:#40C9B2; --good-soft:#12302C;
+    --warn:#E3AA4E; --warn-soft:#33270F;
+    --bad:#F08070; --bad-soft:#3A1C18;
+    --side-bg:#0A0F1A; --side-ink:#E7ECF5; --side-muted:#8391A9;
+    --side-line:rgba(255,255,255,.07); --side-hover:rgba(255,255,255,.05);
+    --side-active:rgba(115,144,255,.18); --side-field:rgba(255,255,255,.06);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --shadow-lg:0 24px 60px rgba(0,0,0,.55);
+  }
+
+  /* ============ base ============ */
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ margin:0; font-weight:700; letter-spacing:-.01em; text-wrap:balance; }
+  .num{ font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric:tabular-nums; }
+  .label{ text-transform:uppercase; letter-spacing:.07em; font-size:10.5px; color:var(--muted); font-weight:700; }
+  a{ color:inherit; }
+  button{ font-family:inherit; cursor:pointer; }
+  input, select, textarea{ font-family:inherit; }
+
+  .app{ display:grid; grid-template-columns:272px minmax(0,1fr); min-height:100vh; }
+  @media (max-width: 860px){ .app{ grid-template-columns:minmax(0,1fr); } }
+
+  /* ============ sidebar ============ */
+  .sidebar{
+    background:var(--side-bg); color:var(--side-ink);
+    padding:22px 16px; display:flex; flex-direction:column; gap:18px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  @media (max-width: 860px){ .sidebar{ position:static; height:auto; } }
+  .brand{ display:flex; align-items:center; gap:11px; padding:0 4px 16px; border-bottom:1px solid var(--side-line); }
+  .brand-mark{ flex-shrink:0; }
+  .brand h1{ font-size:17px; font-weight:800; color:var(--side-ink); }
+  .brand .tag{ font-size:11.5px; color:var(--side-muted); margin-top:1px; }
+
+  .global-upload{
+    background:linear-gradient(160deg, rgba(47,91,234,.30), rgba(110,75,216,.22));
+    border:1px solid rgba(143,166,255,.28); border-radius:var(--radius); padding:14px;
+  }
+  .global-upload .t{ font-weight:700; font-size:13.5px; margin-bottom:4px; color:var(--side-ink); }
+  .global-upload .h{ font-size:11.5px; color:var(--side-muted); margin-bottom:12px; line-height:1.45; }
+  .global-upload .btn{ background:#FFFFFF; color:#14213D; }
+  .global-upload .btn:hover{ background:#EEF2FF; }
+
+  .side-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--side-muted); padding:0 6px; margin-bottom:-10px; }
+  .company-list{ display:flex; flex-direction:column; gap:2px; }
+  .company-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 10px; border-radius:9px; cursor:pointer; color:var(--side-ink);
+    transition:background .15s ease, color .15s ease;
+  }
+  .company-item:hover{ background:var(--side-hover); }
+  .company-item.active{ background:var(--side-active); box-shadow:inset 0 0 0 1px rgba(143,166,255,.35); }
+  .company-item .cname{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .company-item .ccount{
+    font-size:11px; font-weight:700; color:var(--side-muted); flex-shrink:0;
+    min-width:20px; text-align:center; padding:1px 6px; border-radius:999px; background:var(--side-field);
+    font-family:"IBM Plex Mono", monospace;
+  }
+  .company-item .ccount:empty{ display:none; }
+  .company-list > div:not(.company-item){ color:var(--side-muted) !important; }
+
+  .add-company{ display:flex; gap:6px; margin-top:auto; }
+  .add-company input{ flex:1; min-width:0; }
+  .sidebar input[type=text]{
+    background:var(--side-field); border:1px solid var(--side-line); color:var(--side-ink);
+  }
+  .sidebar input[type=text]::placeholder{ color:var(--side-muted); }
+  .sidebar .btn.secondary{ background:var(--side-field); color:var(--side-ink); border-color:var(--side-line); }
+  .sidebar .btn.secondary:hover{ background:rgba(255,255,255,.12); }
+
+  .sync-note{ font-size:11px; color:var(--side-muted); display:flex; align-items:center; gap:7px; padding:0 4px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:#40C9B2; flex-shrink:0; box-shadow:0 0 0 3px rgba(64,201,178,.18); }
+  .dot.off{ background:#F08070; box-shadow:0 0 0 3px rgba(240,128,112,.18); }
+
+  /* ============ controls ============ */
+  input[type=text], input[type=number], input[type=date], select{
+    background:var(--surface); border:1px solid var(--border); color:var(--ink);
+    border-radius:9px; padding:9px 11px; font-size:13px; width:100%;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type=text]:hover, input[type=number]:hover, input[type=date]:hover, select:hover{ border-color:var(--line-strong); }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  button:focus-visible, label.btn:focus-visible, summary:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    background:var(--accent); color:var(--accent-ink); border:1px solid transparent;
+    border-radius:9px; padding:9px 15px; font-size:13px; font-weight:700; white-space:nowrap;
+    transition:background .15s ease, transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .btn:hover{ filter:brightness(1.07); box-shadow:var(--shadow-sm); }
+  .btn:active{ transform:translateY(1px); }
+  label.btn{ cursor:pointer; }
+  .btn.secondary{ background:var(--surface); color:var(--ink); border-color:var(--border); }
+  .btn.secondary:hover{ border-color:var(--line-strong); filter:none; background:var(--surface-2); }
+  .btn.ghost{ background:transparent; color:var(--muted); border-color:transparent; padding:7px 9px; font-size:12.5px; }
+  .btn.ghost:hover{ color:var(--ink); background:var(--surface-2); box-shadow:none; filter:none; }
+  .btn.danger{ color:var(--bad); }
+  .btn.danger:hover{ background:var(--bad-soft); color:var(--bad); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; filter:none; }
+
+  /* ============ main ============ */
+  main{ padding:30px clamp(16px, 3.2vw, 40px) 80px; max-width:1240px; width:100%; }
+
+  .empty-state{ color:var(--muted); padding:44px 0; max-width:620px; }
+  .empty-state h2{ font-size:24px; color:var(--ink); margin-bottom:8px; }
+  .empty-state p{ margin:0; max-width:60ch; }
+  .steps{ list-style:none; margin:26px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:12px; }
+  .steps li{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px 14px 16px; display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:12.5px;
+  }
+  .steps b{ color:var(--ink); font-size:13.5px; }
+  .step-n{
+    width:24px; height:24px; border-radius:50%; display:inline-grid; place-items:center;
+    font-size:12px; font-weight:800; background:var(--accent-soft); color:var(--accent);
+  }
+  .steps li:nth-child(2) .step-n{ background:var(--rou-soft); color:var(--rou); }
+  .steps li:nth-child(3) .step-n{ background:var(--good-soft); color:var(--good); }
+
+  .company-header{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;
+    padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--border);
+  }
+  .company-header h2{ font-size:26px; font-weight:800; }
+  .company-header .sub{ color:var(--muted); font-size:13px; margin-top:3px; }
+
+  .counterparty-bar{
+    display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
+    margin-bottom:24px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  }
+  .counterparty-bar .field{ min-width:min(240px,100%); flex:1 1 240px; }
+  .counterparty-bar .or{ color:var(--faint); font-size:12px; padding-bottom:10px; }
+  .counterparty-bar .new-cp{ display:flex; gap:6px; align-items:flex-end; flex:1 1 260px; flex-wrap:wrap; }
+  .counterparty-bar .new-cp .field{ min-width:min(180px,100%); }
+
+  .agreement-title{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;
+  }
+  .agreement-title h3{ font-size:16px; font-weight:700; }
+  .agreement-title .arrow{
+    color:var(--rou); font-size:14px; width:26px; height:26px; border-radius:50%;
+    display:inline-grid; place-items:center; background:var(--rou-soft);
+  }
+
+  .section-title{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 10px; }
+  .section-title h3{ font-size:15px; font-weight:700; }
+
+  .add-lease-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    background:var(--accent-soft); border:1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius:var(--radius); padding:14px 18px; margin-bottom:26px;
+  }
+  .add-lease-bar .t{ font-weight:700; font-size:14px; color:var(--ink); }
+  .add-lease-bar .h{ font-size:12.5px; color:var(--muted); margin-top:2px; max-width:560px; }
+
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; color:var(--muted); font-weight:600; }
+  .field .hint{ font-size:11px; color:var(--faint); }
+  .subhead{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);
+    margin:16px 0 10px; padding-top:14px; border-top:1px solid var(--border);
+  }
+
+  /* ============ lease cards ============ */
+  .lease-list{ display:flex; flex-direction:column; gap:14px; }
+  .lease-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow-sm); overflow:hidden;
+    transition:box-shadow .2s ease, border-color .2s ease;
+  }
+  .lease-card:hover{ border-color:var(--line-strong); box-shadow:var(--shadow); }
+  .lease-card[open]{ box-shadow:var(--shadow); border-color:var(--line-strong); }
+
+  .lease-summary{ cursor:pointer; list-style:none; display:block; }
+  .lease-summary::-webkit-details-marker{ display:none; }
+  .lease-summary::marker{ content:''; }
+  .lease-summary:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+
+  .lease-card-head{ display:flex; align-items:center; gap:14px; padding:15px 18px; flex-wrap:wrap; }
+  .thumb{
+    width:40px; height:40px; max-width:40px; max-height:40px;
+    border-radius:8px; object-fit:cover; border:1px solid var(--border); flex-shrink:0; cursor:zoom-in;
+  }
+  .thumb-placeholder{
+    width:40px; height:40px; border-radius:8px; border:1px dashed var(--line-strong); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; color:var(--faint);
+  }
+  .lease-title-block{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 1 220px; }
+  .lease-title-block .lname{ font-size:15.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lease-title-block .lterm{ font-size:12px; color:var(--muted); }
+
+  .pill{
+    font-size:10.5px; font-weight:800; padding:4px 10px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.06em; flex-shrink:0;
+  }
+  .pill.recognized{ background:var(--good-soft); color:var(--good); }
+  .pill.derecognized{ background:var(--warn-soft); color:var(--warn); }
+
+  .xls-btn{ flex-shrink:0; padding:6px 11px; font-size:12px; }
+  .chev{ color:var(--faint); transition:transform .22s var(--ease); flex-shrink:0; }
+  .lease-card[open] .chev{ transform:rotate(90deg); color:var(--accent); }
+
+  .lease-warn{
+    background:var(--bad-soft); color:var(--bad);
+    border-top:1px solid color-mix(in srgb, var(--bad) 30%, transparent);
+    padding:10px 18px; font-size:12.5px; line-height:1.45;
+  }
+
+  .stat-row{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+    gap:1px; background:var(--border); border-top:1px solid var(--border); cursor:pointer;
+  }
+  .stat{ background:var(--surface-2); padding:12px 16px; display:flex; flex-direction:column; gap:4px; transition:background .15s ease; }
+  .lease-summary:hover .stat{ background:var(--surface); }
+  .stat .v{ font-size:15px; font-weight:600; color:var(--ink); }
+  .stat .v.small{ font-size:14px; }
+  /* liability figures in blue, the asset figure in violet */
+  .stat:nth-child(2) .v, .stat:nth-child(3) .v, .stat:nth-child(5) .v{ color:var(--accent); }
+  .stat:nth-child(4) .v{ color:var(--rou); }
+
+  .lease-body{ padding:16px 16px 18px; border-top:1px solid var(--border); }
+  .lease-card[open] .lease-body{ animation:reveal .26s var(--ease); }
+  @keyframes reveal{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+
+  .lease-actions{ display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center; }
+
+  .contract-block{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:10px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  }
+  .contract-block img{ width:56px; height:56px; max-width:56px; max-height:56px; object-fit:cover; border-radius:7px; border:1px solid var(--border); cursor:zoom-in; }
+  .contract-block .no-doc{ font-size:12.5px; color:var(--muted); }
+
+  .particulars-block{ padding:14px 16px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; font-size:12.5px; }
+  .particulars-block .ptitle{ font-weight:700; margin-bottom:10px; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+  .particulars-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:12px 22px; }
+  .particulars-grid .row .k{ color:var(--muted); font-size:11.5px; }
+  .particulars-grid .row .v{ margin-top:2px; color:var(--ink); word-break:break-word; }
+  .particulars-note{ margin-top:12px; font-size:12px; color:var(--warn); background:var(--warn-soft); padding:8px 10px; border-radius:8px; }
+
+  .derecog-box{
+    background:var(--warn-soft); border:1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    border-radius:10px; padding:12px 14px; margin-top:16px; font-size:12.5px;
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .derecog-box .row{ display:flex; justify-content:space-between; gap:12px; padding:2px 0; flex-wrap:wrap; }
+  .derecog-box .row .k{ color:var(--muted); }
+  .derecog-box .gain{ color:var(--good); font-weight:700; }
+  .derecog-box .loss{ color:var(--bad); font-weight:700; }
+
+  .schedule-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .schedule-title{ font-size:13.5px; font-weight:700; }
+  .scroll-hint{ display:block; font-size:11px; color:var(--faint); margin:-4px 0 8px; }
+
+  .sub-panel{ margin-top:16px; border-top:1px solid var(--border); padding-top:12px; }
+  .sub-panel > summary{
+    cursor:pointer; font-size:11px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.07em; padding:4px 0; list-style:none;
+    transition:color .15s ease;
+  }
+  .sub-panel > summary::-webkit-details-marker{ display:none; }
+  .sub-panel > summary::before{ content:'\25B8'; display:inline-block; margin-right:8px; transition:transform .2s var(--ease); }
+  .sub-panel[open] > summary::before{ transform:rotate(90deg); }
+  .sub-panel > summary:hover{ color:var(--ink); }
+  .sub-panel > *:not(summary){ margin-top:12px; }
+  .sub-panel[open] > *:not(summary){ animation:reveal .22s var(--ease); }
+
+  /* ============ schedule table ============ */
+  .schedule-wrap{ overflow:auto; max-height:440px; border:1px solid var(--border); border-radius:10px; }
+  table{ border-collapse:collapse; width:100%; font-size:12px; }
+  thead th{
+    position:sticky; background:var(--surface-2); text-align:right; padding:8px 7px;
+    font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; z-index:1;
+  }
+  thead tr:first-child th{ top:0; text-align:center; font-size:10px; padding:7px 9px; }
+  thead tr:first-child th:first-child{ text-align:left; vertical-align:bottom; }
+  thead tr:nth-child(2) th{ top:29px; }
+  thead th.grp-liab{ background:var(--accent-soft); color:var(--accent); }
+  thead th.grp-rou{ background:var(--rou-soft); color:var(--rou); border-left:2px solid var(--surface); }
+  thead tr:nth-child(2) th:nth-child(5){ border-left:2px solid var(--line-strong); }
+  thead th:first-child, tbody td:first-child{ text-align:left; }
+  tbody td{ padding:9px 7px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; color:var(--ink); font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums; font-size:11.5px; }
+  tbody td:nth-child(6){ border-left:2px solid var(--line-strong); }
+  tbody td:nth-child(5){ color:var(--accent); font-weight:600; }
+  tbody td:nth-child(8){ color:var(--rou); font-weight:600; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:nth-child(even) td{ background:color-mix(in srgb, var(--surface-2) 70%, transparent); }
+  tbody tr:hover td{ background:var(--accent-soft); }
+  tbody tr.derecog-row td{ background:var(--warn-soft); font-weight:700; }
+  tbody td.period-cell{ font-family:"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size:11.5px; font-weight:600; color:var(--muted); }
+
+  .foot-note{ margin-top:26px; font-size:12px; color:var(--faint); max-width:72ch; line-height:1.55; }
+
+  /* ============ lightbox, modals, toast ============ */
+  .lightbox{
+    display:none; position:fixed; inset:0; background:rgba(8,12,24,.84); z-index:50;
+    align-items:center; justify-content:center; padding:40px; cursor:zoom-out;
+  }
+  .lightbox.open{ display:flex; animation:fade .18s ease; }
+  .lightbox img{ max-width:100%; max-height:100%; border-radius:8px; box-shadow:var(--shadow-lg); }
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(14,19,36,.48);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+    z-index:60; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; animation:fade .16s ease; }
+  .modal-overlay.open .modal-box{ animation:pop .22s var(--ease); }
+  #dialogModal{ z-index:70; }
+  @keyframes fade{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes pop{ from{ opacity:0; transform:translateY(8px) scale(.98); } to{ opacity:1; transform:none; } }
+  .modal-box{
+    background:var(--surface); color:var(--ink); border-radius:16px; border:1px solid var(--border);
+    padding:24px 26px; max-width:460px; width:100%; max-height:86vh; overflow-y:auto; box-shadow:var(--shadow-lg);
+  }
+  .modal-box.wide{ max-width:640px; }
+  .modal-box h3{ font-size:18px; font-weight:800; margin-bottom:8px; }
+  .modal-box .hint{ font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.5; }
+  .modal-box .particulars-grid{ background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:20px; flex-wrap:wrap; }
+
+  .map-options{ display:flex; flex-direction:column; gap:10px; }
+  .map-option{
+    text-align:left; background:var(--surface); color:var(--ink); border:1px solid var(--border);
+    border-radius:12px; padding:13px 15px; display:flex; flex-direction:column; font-size:13px;
+    transition:border-color .15s ease, background .15s ease, transform .12s ease;
+  }
+  .map-option:hover{ border-color:var(--accent); background:var(--accent-soft); }
+  .map-option:active{ transform:translateY(1px); }
+  .map-option .mlabel{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+  .map-option .mname{ font-size:15px; font-weight:700; }
+
+  .toast{
+    position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:90;
+    transform:translate(-50%, 16px); opacity:0; pointer-events:none;
+    background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:10px;
+    font-size:13px; font-weight:600; box-shadow:var(--shadow-lg);
+    display:flex; align-items:center; gap:9px; max-width:calc(100vw - 32px);
+    transition:opacity .2s ease, transform .25s var(--ease);
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+  .toast::before{ content:''; width:8px; height:8px; border-radius:50%; background:var(--good); flex-shrink:0; }
+  .toast.bad::before{ background:var(--bad); }
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect width="34" height="34" rx="9" fill="#FFFFFF" fill-opacity=".08"/>
+        <rect x="8" y="10" width="18" height="5" rx="2.5" fill="#7390FF"/>
+        <rect x="8" y="19" width="12" height="5" rx="2.5" fill="#A78CFF"/>
+      </svg>
+      <div>
+        <h1>Lease Ledger</h1>
+        <div class="tag">Ind AS 116 &middot; recognition &amp; measurement</div>
+      </div>
+    </div>
+
+    <div class="global-upload">
+      <div class="t">Upload a lease agreement</div>
+      <div class="h">PDF, Word file, saved web page, or a clear photo. It's read automatically and filed under the right company &amp; counterparty — creating them if needed.</div>
+      <label class="btn" for="globalFileInput" style="display:block; text-align:center;">Upload &amp; read</label>
+      <input type="file" id="globalFileInput" accept="application/pdf,image/*,.html,.htm,.mht,.mhtml,.txt,.docx,text/html,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,message/rfc822,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none;" />
+      <div class="h" style="margin:10px 0 6px;">Prefer to type it in yourself? No scan or AI reading needed —</div>
+      <button class="btn secondary" id="downloadTemplateBtn" style="display:block; width:100%;">Download blank Excel template</button>
+    </div>
+
+    <div class="side-label">Companies</div>
+    <div class="company-list" id="companyList"></div>
+
+    <div class="add-company">
+      <input type="text" id="newCompanyName" placeholder="New company name" />
+      <button class="btn secondary" id="addCompanyBtn">Add</button>
+    </div>
+
+    <div class="sync-note" id="syncNote">
+      <span class="dot" id="syncDot"></span>
+      <span id="syncText">Connecting&hellip;</span>
+      <span style="margin-left:auto; opacity:.55;">b31</span>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="empty-state">
+      <h2>Select a company, or upload an agreement</h2>
+      <p>Upload a signed lease agreement and the company and counterparty are set up for you automatically. Or pick an existing company on the left to browse what is already recorded.</p>
+    </div>
+  </main>
+
+  <div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt="Lease contract" /></div>
+  <div class="modal-overlay" id="uploadModal"></div>
+  <div class="modal-overlay" id="dialogModal"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function(){
+
+  // ---------- state ----------
+  var companies = [];              // [{id, name}]
+  var selectedCompanyId = null;
+  var counterparties = {};         // companyId -> [{id, name}]
+  var selectedCounterpartyId = null;
+  var leases = {};                 // "companyId::counterpartyId" -> [{id, ...fields}]
+  var brokenLeases = {};           // "companyId::counterpartyId" -> [{hash, data}] — real records stuck with a blank document id
+  var repairedHashes = {};         // "companyId::counterpartyId" -> {hash: true} — broken records already restored, so they aren't offered again
+  var openLeaseIds = {};
+  var unsubCounterparties = null;
+  var unsubLeases = null;
+  var db = null;
+  var sampleFn = null;
+  var downloadsFn = null;
+  var downloadsPromise = null;
+  // A real browser (this hosted build always has one) can just trigger a
+  // native download — no Claude "downloads" capability needed. Same
+  // {save({filename, data})} shape as the Claude capability, so every
+  // existing call site works unchanged.
+  function browserDownloadHandle(){
+    return {
+      save: function(req){
+        return new Promise(function(resolve){
+          var url = URL.createObjectURL(req.data);
+          var a = document.createElement('a');
+          a.href = url; a.download = req.filename || 'download';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+          resolve({ status: 'saved' });
+        });
+      }
+    };
+  }
+  function getDownloads(){
+    if(downloadsFn) return Promise.resolve(downloadsFn);
+    if(downloadsPromise) return downloadsPromise;
+    if(window.claude && typeof window.claude.use === 'function'){
+      downloadsPromise = window.claude.use('downloads').then(function(h){
+        downloadsFn = h || browserDownloadHandle(); return downloadsFn;
+      }, function(){ downloadsPromise = null; downloadsFn = browserDownloadHandle(); return downloadsFn; });
+      return downloadsPromise;
+    }
+    downloadsFn = browserDownloadHandle();
+    return Promise.resolve(downloadsFn);
+  }
+  var modalState = null;
+
+  var localMode = false;
+  var localStore = { companies: [], counterparties: {}, leases: {} };
+  var LOCAL_STORE_KEY = 'leaseLedgerLocalStore';
+  // Hosted standalone (no Claude runtime), this is the only persistence
+  // available — a single browser's localStorage. Loaded once here so a
+  // page refresh doesn't lose what was already entered on this device.
+  (function hydrateLocalStore(){
+    try{
+      var saved = window.localStorage && window.localStorage.getItem(LOCAL_STORE_KEY);
+      if(saved){
+        var parsed = JSON.parse(saved);
+        if(parsed && typeof parsed === 'object'){
+          localStore = {
+            companies: parsed.companies || [],
+            counterparties: parsed.counterparties || {},
+            leases: parsed.leases || {}
+          };
+        }
+      }
+    } catch(e){ /* corrupted or unavailable — start empty rather than fail to load */ }
+  })();
+  function persistLocalStore(){
+    try{ window.localStorage && window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(localStore)); }
+    catch(e){ /* private browsing / quota — data just won't survive a refresh */ }
+  }
+
+  function leaseKey(cid, pid){ return cid + '::' + pid; }
+
+  // A client-minted id for a new document. `CollectionReference.add()` is
+  // sugar for `.doc().set(data)`, minting its own id internally where we
+  // cannot see or verify it — and in this app that has, at least once,
+  // produced a document whose id came back as an empty string (a document
+  // that can be created but never addressed again). Every document this
+  // app creates is instead given an id it generates itself and can trust,
+  // via `.doc(id).set(data)`.
+  function mintId(prefix){
+    return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,9);
+  }
+  function dbAdd(collectionPath, data){
+    var id = mintId('d');
+    return db.doc(collectionPath + '/' + id).set(data).then(function(){ return { id: id }; });
+  }
+
+  // A short, stable fingerprint of a broken (blank-id) lease's own fields —
+  // used only to remember, in the "repairs" marker collection, that a
+  // particular broken record has already been restored, so it is not
+  // offered for repair (and duplicated) again on a later visit.
+  function leaseContentHash(data){
+    var basis = JSON.stringify({
+      n: data.leaseName || '', s: data.startDate || '', e: data.endDate || '',
+      t: data.totalLeaseValue || '', r: data.discountRate || '', m: data.monthlyRent || ''
+    });
+    var h = 5381;
+    for(var i=0; i<basis.length; i++){ h = ((h * 33) ^ basis.charCodeAt(i)) >>> 0; }
+    return 'h' + h.toString(36);
+  }
+
+  // Change-detection for live db snapshots, so an unchanged snapshot never
+  // triggers a re-render (a re-render mid-click cancels the click).
+  var companySignature = null;
+  var cpSignatures = {};
+  var leaseSignatures = {};
+  function signatureOf(arr){
+    try{
+      return JSON.stringify(arr, function(k, v){
+        // contract images are huge base64 blobs; hash them by length instead
+        if(k === 'contractImage' && typeof v === 'string') return 'img:' + v.length;
+        return v;
+      });
+    } catch(e){ return String(Math.random()); }
+  }
+
+  // ---------- finance helpers ----------
+  function parseDate(s){ return s ? new Date(s + 'T00:00:00') : null; }
+  function addMonths(date, n){ var d = new Date(date.getTime()); d.setMonth(d.getMonth() + n); return d; }
+  function addDays(date, n){ var d = new Date(date.getTime()); d.setDate(d.getDate() + n); return d; }
+
+  function monthsBetween(startStr, endStr){
+    var s = parseDate(startStr), e = parseDate(endStr);
+    if(!s || !e || e <= s) return 0;
+    var n = (e.getFullYear()-s.getFullYear())*12 + (e.getMonth()-s.getMonth());
+    if(e.getDate() >= s.getDate()) n += 1;
+    return Math.max(n, 1);
+  }
+
+  function fyKey(date){
+    var y = date.getFullYear(), m = date.getMonth();
+    var startYear = (m <= 2) ? y - 1 : y;
+    return startYear + '-' + String(startYear+1).slice(2);
+  }
+
+  function computeLease(l){
+    var startDate = parseDate(l.startDate);
+    var endDateObj = parseDate(l.endDate);
+    var termMonths = monthsBetween(l.startDate, l.endDate);
+    var rawRate = (l.discountRate === null || l.discountRate === undefined || l.discountRate === '') ? NaN : Number(l.discountRate);
+    var annualRate = isFinite(rawRate) ? rawRate : 0;
+    var monthlyRate = annualRate/100/12;
+    var rawTotal = (l.totalLeaseValue === null || l.totalLeaseValue === undefined || l.totalLeaseValue === '') ? NaN : Number(l.totalLeaseValue);
+    var totalValue = isFinite(rawTotal) ? rawTotal : 0;
+    var payment = termMonths > 0 ? totalValue/termMonths : 0;
+
+    var pv;
+    if(monthlyRate > 0 && termMonths > 0){
+      pv = payment * (1 - Math.pow(1+monthlyRate, -termMonths)) / monthlyRate;
+    } else {
+      pv = totalValue;
+    }
+    var rouInitial = pv;
+    var monthlyDep = termMonths > 0 ? rouInitial/termMonths : 0;
+
+    var schedule = [];
+    var opening = pv;
+    for(var i=1; i<=termMonths; i++){
+      var interest = opening*monthlyRate;
+      var principal = payment - interest;
+      if(i === termMonths) principal = opening;
+      var closing = opening - principal;
+      var rouCarrying = rouInitial - monthlyDep*i;
+      if(rouCarrying < 0) rouCarrying = 0;
+      var periodStart = (i===1) ? startDate : addDays(addMonths(startDate, i-1), 0);
+      var periodEnd = (i===termMonths) ? endDateObj : addDays(addMonths(startDate, i), -1);
+      schedule.push({
+        period:i, opening:opening, payment:payment, interest:interest,
+        principal:principal, closing:closing, depreciation:monthlyDep,
+        rouCarrying:rouCarrying, periodStart:periodStart, periodEnd:periodEnd
+      });
+      opening = closing;
+    }
+
+    var totalInterest = schedule.reduce(function(a,r){return a+r.interest;},0);
+
+    var derecog = null;
+    var scheduleForYearly = schedule;
+    if(l.status === 'derecognized' && l.derecognitionDate){
+      var elapsed = monthsBetween(l.startDate, l.derecognitionDate);
+      elapsed = Math.min(elapsed, termMonths);
+      var row = schedule[Math.max(elapsed-1,0)];
+      var liabilityAtDerecog = row ? row.closing : pv;
+      var rouAtDerecog = row ? row.rouCarrying : rouInitial;
+      var gainLoss = liabilityAtDerecog - rouAtDerecog;
+      derecog = { monthsElapsed: elapsed, liability: liabilityAtDerecog, rouCarrying: rouAtDerecog, gainLoss: gainLoss };
+      scheduleForYearly = schedule.slice(0, elapsed);
+    }
+
+    var yearly = [];
+    var buckets = {};
+    var order = [];
+    scheduleForYearly.forEach(function(r){
+      var key = fyKey(r.periodEnd);
+      if(!buckets[key]){
+        var rouOpeningForYear = r.rouCarrying + r.depreciation;
+        buckets[key] = { key:key, rangeStart:r.periodStart, rangeEnd:r.periodEnd, opening:r.opening, closing:r.closing, rouOpening:rouOpeningForYear, rouCarrying:r.rouCarrying, interest:0, principal:0, depreciation:0 };
+        order.push(key);
+      }
+      var b = buckets[key];
+      if(r.periodStart < b.rangeStart) b.rangeStart = r.periodStart;
+      if(r.periodEnd > b.rangeEnd) b.rangeEnd = r.periodEnd;
+      b.interest += r.interest;
+      b.principal += r.principal;
+      b.depreciation += r.depreciation;
+      b.closing = r.closing;
+      b.rouCarrying = r.rouCarrying;
+    });
+    yearly = order.map(function(k){ return buckets[k]; });
+
+    // Can this lease actually be measured? A record with no term, or a
+    // non-numeric / non-positive lease value, must not be presented as if it
+    // carried a real liability.
+    var issues = [];
+    if(!(termMonths > 0)) issues.push('the commencement and end dates are missing or the end date is not after the start');
+    if(!isFinite(rawTotal) || rawTotal <= 0) issues.push('the total lease value is missing or not a positive amount');
+    if(!isFinite(rawRate) || rawRate < 0) issues.push('the discount rate is missing or not a valid percentage');
+
+    return {
+      termMonths: termMonths, monthlyRate: monthlyRate, payment: payment,
+      pv: pv, rouInitial: rouInitial, monthlyDep: monthlyDep,
+      schedule: schedule, yearly: yearly, totalInterest: totalInterest, derecog: derecog,
+      measurable: issues.length === 0, issues: issues
+    };
+  }
+
+  function round2(n){ return Math.round((Number(n)||0) * 100) / 100; }
+
+  // ---------- Excel export (self-contained) ----------
+  // An .xlsx is just a ZIP of XML parts. We build both here so the download
+  // never depends on an external library, a CDN, or the network.
+  function utf8Bytes(str){
+    var out = [], i, c;
+    for(i=0; i<str.length; i++){
+      c = str.charCodeAt(i);
+      if(c < 0x80){ out.push(c); }
+      else if(c < 0x800){ out.push(0xC0|(c>>6), 0x80|(c&0x3F)); }
+      else if(c >= 0xD800 && c <= 0xDBFF && i+1 < str.length){
+        var c2 = str.charCodeAt(i+1);
+        var cp = 0x10000 + ((c-0xD800)<<10) + (c2-0xDC00);
+        out.push(0xF0|(cp>>18), 0x80|((cp>>12)&0x3F), 0x80|((cp>>6)&0x3F), 0x80|(cp&0x3F));
+        i++;
+      }
+      else { out.push(0xE0|(c>>12), 0x80|((c>>6)&0x3F), 0x80|(c&0x3F)); }
+    }
+    return out;
+  }
+
+  var _crcTable = null;
+  function crc32(bytes){
+    if(!_crcTable){
+      _crcTable = [];
+      for(var n=0; n<256; n++){
+        var c = n;
+        for(var k=0; k<8; k++){ c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); }
+        _crcTable[n] = c >>> 0;
+      }
+    }
+    var crc = -1;
+    for(var i=0; i<bytes.length; i++){ crc = (crc >>> 8) ^ _crcTable[(crc ^ bytes[i]) & 0xFF]; }
+    return (crc ^ (-1)) >>> 0;
+  }
+
+  function push16(a, v){ a.push(v & 0xFF, (v >>> 8) & 0xFF); }
+  function push32(a, v){ a.push(v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF); }
+
+  // Minimal ZIP writer, stored (uncompressed) entries — valid for .xlsx.
+  function zipFiles(files){
+    var out = [], central = [], offset = 0;
+    files.forEach(function(f){
+      var nameB = utf8Bytes(f.name);
+      var dataB = f.bytes;
+      var crc = crc32(dataB);
+      var local = [];
+      push32(local, 0x04034b50);
+      push16(local, 20); push16(local, 0x0800); push16(local, 0);
+      push16(local, 0); push16(local, 0);
+      push32(local, crc); push32(local, dataB.length); push32(local, dataB.length);
+      push16(local, nameB.length); push16(local, 0);
+      var localHeader = local.concat(nameB);
+      var cd = [];
+      push32(cd, 0x02014b50);
+      push16(cd, 20); push16(cd, 20); push16(cd, 0x0800); push16(cd, 0);
+      push16(cd, 0); push16(cd, 0);
+      push32(cd, crc); push32(cd, dataB.length); push32(cd, dataB.length);
+      push16(cd, nameB.length); push16(cd, 0); push16(cd, 0);
+      push16(cd, 0); push16(cd, 0); push32(cd, 0);
+      push32(cd, offset);
+      central.push(cd.concat(nameB));
+      out.push(localHeader, dataB);
+      offset += localHeader.length + dataB.length;
+    });
+    var cdBytes = [];
+    central.forEach(function(c){ cdBytes = cdBytes.concat(c); });
+    var end = [];
+    push32(end, 0x06054b50);
+    push16(end, 0); push16(end, 0);
+    push16(end, files.length); push16(end, files.length);
+    push32(end, cdBytes.length); push32(end, offset);
+    push16(end, 0);
+    var total = [];
+    out.forEach(function(chunk){ total = total.concat(chunk); });
+    total = total.concat(cdBytes, end);
+    return new Uint8Array(total);
+  }
+
+  function xmlEsc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c];
+    // eslint-disable-next-line
+    });
+  }
+
+  function colLetter(n){
+    var s = '';
+    n = n + 1;
+    while(n > 0){ var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+
+  // rows: array of arrays; numbers become numeric cells, everything else text.
+  // ---- styling ----------------------------------------------------------
+  // Style slots referenced by cells as s="n" (indexes into cellXfs below).
+  var ST = {
+    TITLE:1, SUB:2, LABEL:3, TEXT:4, MONEY:5,
+    HDR:6, CELL_TEXT:7, CELL_NUM:8, TOT_TEXT:9, TOT_NUM:10,
+    TPL_LABEL:11, TPL_VALUE:12, TPL_VALUE_TEXT:13, TPL_SECTION:14
+  };
+
+  function stylesXml(){
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      // Indian digit grouping (lakh/crore) with a rupee symbol
+      '<numFmts count="2">' +
+        '<numFmt numFmtId="164" formatCode="&quot;₹&quot;#,##,##0.00"/>' +
+        '<numFmt numFmtId="165" formatCode="@"/>' +
+      '</numFmts>' +
+      '<fonts count="5">' +
+        '<font><sz val="11"/><color rgb="FF17211C"/><name val="Calibri"/></font>' +
+        '<font><b/><sz val="15"/><color rgb="FF0B6E4F"/><name val="Calibri"/></font>' +
+        '<font><b/><sz val="11"/><color rgb="FF17211C"/><name val="Calibri"/></font>' +
+        '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>' +
+        '<font><sz val="11"/><color rgb="FF5B6459"/><name val="Calibri"/></font>' +
+      '</fonts>' +
+      '<fills count="4">' +
+        '<fill><patternFill patternType="none"/></fill>' +
+        '<fill><patternFill patternType="gray125"/></fill>' +
+        '<fill><patternFill patternType="solid"><fgColor rgb="FF0B6E4F"/><bgColor indexed="64"/></patternFill></fill>' +
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFEEF1EC"/><bgColor indexed="64"/></patternFill></fill>' +
+      '</fills>' +
+      '<borders count="2">' +
+        '<border><left/><right/><top/><bottom/><diagonal/></border>' +
+        '<border>' +
+          '<left style="thin"><color rgb="FFB9C2B5"/></left>' +
+          '<right style="thin"><color rgb="FFB9C2B5"/></right>' +
+          '<top style="thin"><color rgb="FFB9C2B5"/></top>' +
+          '<bottom style="thin"><color rgb="FFB9C2B5"/></bottom>' +
+          '<diagonal/></border>' +
+      '</borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="15">' +
+        // 0 default
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+        // 1 title
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 2 subtitle
+        '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 3 label
+        '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 4 plain text
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center" wrapText="1"/></xf>' +
+        // 5 money, no border
+        '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 6 table header
+        '<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+        // 7 table text cell
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 8 table number cell
+        '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="right" vertical="center"/></xf>' +
+        // 9 total row text
+        '<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 10 total row number
+        '<xf numFmtId="164" fontId="2" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="right" vertical="center"/></xf>' +
+        // 11 template: field label (bold, shaded, bordered)
+        '<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center" wrapText="1"/></xf>' +
+        // 12 template: editable value cell (blank, bordered, general format)
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 13 template: editable value cell forced to TEXT (dates — so Excel
+        // never silently turns a typed "2025-04-01" into a date serial number)
+        '<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center"/></xf>' +
+        // 14 template: section banner (bordered, left-aligned, wraps)
+        '<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+          '<alignment horizontal="left" vertical="center" indent="1" wrapText="1"/></xf>' +
+      '</cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+      '</styleSheet>';
+  }
+
+  function colLetter(n){
+    var s = '';
+    n = n + 1;
+    while(n > 0){ var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+
+  // A cell is a primitive, or {v:value, s:styleIndex}. A styled blank cell is
+  // still written out, so borders continue across empty columns.
+  function cellXml(ref, cell){
+    var v = cell, st = null;
+    if(cell && typeof cell === 'object'){ v = cell.v; st = cell.s; }
+    var a = (st === null || st === undefined) ? '' : ' s="' + st + '"';
+    var blank = (v === null || v === undefined || v === '');
+    if(blank) return a ? '<c r="' + ref + '"' + a + '/>' : '';
+    if(typeof v === 'number' && isFinite(v)) return '<c r="' + ref + '"' + a + '><v>' + v + '</v></c>';
+    return '<c r="' + ref + '"' + a + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(v) + '</t></is></c>';
+  }
+
+  function sheetXml(rows, colWidths, opts){
+    opts = opts || {};
+    var views = '<sheetViews><sheetView showGridLines="0" workbookViewId="0">';
+    if(opts.freezeRow){
+      views += '<pane ySplit="' + opts.freezeRow + '" topLeftCell="A' + (opts.freezeRow + 1) +
+               '" activePane="bottomLeft" state="frozen"/>';
+    }
+    views += '</sheetView></sheetViews>';
+
+    var cols = '';
+    if(colWidths && colWidths.length){
+      cols = '<cols>' + colWidths.map(function(w, i){
+        return '<col min="' + (i+1) + '" max="' + (i+1) + '" width="' + w + '" customWidth="1"/>';
+      }).join('') + '</cols>';
+    }
+
+    var body = rows.map(function(row, r){
+      var ht = (opts.rowHeights && opts.rowHeights[r+1])
+        ? ' ht="' + opts.rowHeights[r+1] + '" customHeight="1"' : '';
+      var cells = (row || []).map(function(cell, c){
+        return cellXml(colLetter(c) + (r + 1), cell);
+      }).join('');
+      return '<row r="' + (r + 1) + '"' + ht + '>' + cells + '</row>';
+    }).join('');
+
+    var merges = '';
+    if(opts.merges && opts.merges.length){
+      merges = '<mergeCells count="' + opts.merges.length + '">' +
+        opts.merges.map(function(m){ return '<mergeCell ref="' + m + '"/>'; }).join('') +
+        '</mergeCells>';
+    }
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      views + cols + '<sheetData>' + body + '</sheetData>' + merges +
+      '</worksheet>';
+  }
+
+  function buildXlsx(rows, sheetName, colWidths, opts){
+    var parts = [
+      { name: '[Content_Types].xml', text:
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        '</Types>' },
+      { name: '_rels/.rels', text:
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/workbook.xml', text:
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheets><sheet name="' + xmlEsc(sheetName || 'Sheet1') + '" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', text:
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+        '</Relationships>' },
+      { name: 'xl/styles.xml', text: stylesXml() },
+      { name: 'xl/worksheets/sheet1.xml', text: sheetXml(rows, colWidths, opts) }
+    ];
+    return zipFiles(parts.map(function(p){ return { name: p.name, bytes: utf8Bytes(p.text) }; }));
+  }
+
+  // Builds the rows AND reports where the table starts, so the header row can
+  // be frozen and the summary rows merged.
+  function leaseScheduleSheet(l, calc){
+    var rows = [], merges = [], rowHeights = {};
+
+    rows.push([{v:'Lease Ledger — Ind AS 116 amortization schedule', s:ST.TITLE}]);
+    rowHeights[1] = 21;
+    rows.push([{v:(l.leaseName || 'Untitled lease'), s:ST.SUB}]);
+    merges.push('A1:H1', 'A2:H2');
+    rows.push([]);
+
+    function info(label, value, style){
+      rows.push([{v:label, s:ST.LABEL}, {v:value, s:(style || ST.TEXT)}]);
+      merges.push('B' + rows.length + ':H' + rows.length);
+    }
+    info('Lessor / landlord', l.lessorName || '—');
+    info('Lessee / counterparty', l.lesseeName || '—');
+    info('Term', fmtDate(l.startDate) + ' to ' + fmtDate(l.endDate) + '  (' + calc.termMonths + ' months)');
+    info('Discount rate (annual)', fmtPct(l.discountRate));
+    info('Lease liability / ROU at start', round2(calc.pv), ST.MONEY);
+    info('Status', l.status === 'derecognized'
+      ? ('Derecognized on ' + fmtDate(l.derecognitionDate)) : 'Recognized');
+
+    rows.push([]);
+
+    var headerRow = rows.length + 1;
+    rows.push([
+      {v:'Period (FY, 1 Apr – 31 Mar)', s:ST.HDR},
+      {v:'Opening liability', s:ST.HDR},
+      {v:'Interest', s:ST.HDR},
+      {v:'Principal repaid', s:ST.HDR},
+      {v:'Closing liability', s:ST.HDR},
+      {v:'Opening ROU asset', s:ST.HDR},
+      {v:'Depreciation', s:ST.HDR},
+      {v:'Closing ROU asset', s:ST.HDR}
+    ]);
+    rowHeights[headerRow] = 32;
+
+    calc.yearly.forEach(function(r){
+      rows.push([
+        {v:fmtDate(r.rangeStart) + ' – ' + fmtDate(r.rangeEnd), s:ST.CELL_TEXT},
+        {v:round2(r.opening),      s:ST.CELL_NUM},
+        {v:round2(r.interest),     s:ST.CELL_NUM},
+        {v:round2(r.principal),    s:ST.CELL_NUM},
+        {v:round2(r.closing),      s:ST.CELL_NUM},
+        {v:round2(r.rouOpening),   s:ST.CELL_NUM},
+        {v:round2(r.depreciation), s:ST.CELL_NUM},
+        {v:round2(r.rouCarrying),  s:ST.CELL_NUM}
+      ]);
+    });
+
+    rows.push([
+      {v:'Total', s:ST.TOT_TEXT},
+      {v:'', s:ST.TOT_NUM},
+      {v:round2(calc.totalInterest), s:ST.TOT_NUM},
+      {v:round2(calc.pv), s:ST.TOT_NUM},
+      {v:'', s:ST.TOT_NUM},
+      {v:'', s:ST.TOT_NUM},
+      {v:round2(calc.rouInitial), s:ST.TOT_NUM},
+      {v:'', s:ST.TOT_NUM}
+    ]);
+
+    // ---- journal entries: recognition account, then derecognition account ----
+    function journalHeader(){
+      rows.push([{v:'Account', s:ST.HDR}, {v:'Debit (₹)', s:ST.HDR}, {v:'Credit (₹)', s:ST.HDR}]);
+    }
+    function journalRow(account, debit, credit){
+      rows.push([
+        {v:account, s:ST.CELL_TEXT},
+        {v:(debit===null||debit===undefined) ? '' : round2(debit), s:ST.CELL_NUM},
+        {v:(credit===null||credit===undefined) ? '' : round2(credit), s:ST.CELL_NUM}
+      ]);
+    }
+    function journalTotal(debit, credit){
+      rows.push([{v:'Total', s:ST.TOT_TEXT}, {v:round2(debit), s:ST.TOT_NUM}, {v:round2(credit), s:ST.TOT_NUM}]);
+    }
+    function narration(text){
+      rows.push([{v:text, s:ST.TEXT}]);
+      merges.push('A' + rows.length + ':H' + rows.length);
+    }
+
+    rows.push([]);
+    rows.push([{v:'Recognition account', s:ST.SUB}]);
+    info('Date', fmtDate(l.startDate));
+    rows.push([]);
+    journalHeader();
+    journalRow('Right-of-use asset', calc.rouInitial, null);
+    journalRow('Lease liability', null, calc.pv);
+    journalTotal(calc.rouInitial, calc.pv);
+    narration('Being right-of-use asset and lease liability recognised on commencement of the lease, under Ind AS 116.');
+
+    if(calc.derecog){
+      var liability = calc.derecog.liability, rouCarry = calc.derecog.rouCarrying, gainLoss = calc.derecog.gainLoss;
+      rows.push([]);
+      rows.push([{v:'Derecognition account', s:ST.SUB}]);
+      info('Date', fmtDate(l.derecognitionDate) + '  (month ' + calc.derecog.monthsElapsed + ' of ' + calc.termMonths + ')');
+      rows.push([]);
+      journalHeader();
+      journalRow('Lease liability', liability, null);
+      journalRow('Right-of-use asset', null, rouCarry);
+      var dTot = liability, cTot = rouCarry;
+      if(gainLoss > 0){ journalRow('Gain on derecognition of lease', null, gainLoss); cTot += gainLoss; }
+      else if(gainLoss < 0){ journalRow('Loss on derecognition of lease', -gainLoss, null); dTot += -gainLoss; }
+      journalTotal(dTot, cTot);
+      narration('Being lease liability and right-of-use asset derecognised, with the resulting ' +
+        (gainLoss >= 0 ? 'gain' : 'loss') + ' of ' + fmtINR(Math.abs(gainLoss)) + ' recognised in the statement of profit and loss.');
+    }
+
+    return { rows: rows, merges: merges, rowHeights: rowHeights, freezeRow: headerRow };
+  }
+
+  // Plain-value rows, used by the copy-into-Excel fallback.
+  function leaseScheduleRows(l, calc){
+    return leaseScheduleSheet(l, calc).rows.map(function(row){
+      return (row || []).map(function(cell){
+        if(cell && typeof cell === 'object') return cell.v;
+        return cell;
+      });
+    });
+  }
+
+  // ---------- blank Excel template: fill in offline, upload back in ----------
+  // A field-per-COLUMN, lease-per-ROW layout that a person fills in by hand
+  // in Excel (or Google Sheets) with no OCR or AI reading involved: the
+  // header row names every field once, and every row underneath it is one
+  // complete, independent lease (which can belong to a different company).
+  // Uploading it back is read by extractFromXlsxTemplate() below, which
+  // matches COLUMNS by their HEADER TEXT (not position) and finds the
+  // header row itself by content, so reordering columns, adding rows, or
+  // moving things around in Excel never breaks it — only renaming a header
+  // does.
+  var TEMPLATE_FIELDS = [
+    { label: 'Company (appears in the sidebar)' },
+    { label: 'Counterparty' },
+    { label: 'Lessor / landlord' },
+    { label: 'Lessee' },
+    { label: 'Premises / property address' },
+    { label: 'Commencement date (DD-MM-YYYY)', text: true },
+    { label: 'End date (DD-MM-YYYY)', text: true },
+    { label: 'Base monthly rent' },
+    { label: 'Monthly maintenance / CAM' },
+    { label: 'Security deposit' },
+    { label: 'Payment due (e.g. 1st of every month)' },
+    { label: 'Discount / interest rate (% p.a.)' },
+    { label: 'Stamp duty paid' },
+    { label: 'e-Stamp certificate no.' },
+    { label: 'Asset / lease name (optional — a name is generated automatically if left blank)' },
+    { label: 'Variable / escalation clause, if any' }
+  ];
+  // A width (in Excel's column-width units) for each field above, in the
+  // same order — wider for free-text fields, narrower for short ones.
+  var TEMPLATE_FIELD_WIDTHS = [30, 26, 26, 26, 30, 18, 18, 16, 18, 16, 22, 16, 16, 20, 26, 30];
+
+  // How many blank lease rows to pre-provision under the header.
+  var LEASE_TEMPLATE_ROWS = 10;
+
+  function blankLeaseTemplateSheet(){
+    var totalCols = 1 + TEMPLATE_FIELDS.length;        // "Lease" row-label column + one per field
+    var lastColLetter = colLetter(totalCols - 1);
+    var rows = [], merges = [], rowHeights = {};
+    rows.push([{v:'Lease Ledger — lease details template', s:ST.TITLE}]);
+    rowHeights[1] = 22;
+    rows.push([{v:'Fill in one lease per ROW below the header and leave unused rows blank, then upload this file back into Lease Ledger — no scan, photo or AI reading needed for this path.', s:ST.SUB}]);
+    merges.push('A1:' + lastColLetter + '1', 'A2:' + lastColLetter + '2');
+    rows.push([]);
+    rows.push([{v:'Each row is a separate lease and can belong to a different company — the "Lease" column just labels the row, it is not itself a field. Dates must be typed as DD-MM-YYYY (e.g. 01-04-2025) — those two columns are pre-formatted as text so Excel will not silently turn them into a date serial.', s:ST.TEXT}]);
+    merges.push('A' + rows.length + ':' + lastColLetter + rows.length);
+    rows.push([]);
+
+    // Header row naming every field once, across the top.
+    var headerRowNum = rows.length + 1;
+    var headerRow = [{v:'Lease', s:ST.HDR}];
+    TEMPLATE_FIELDS.forEach(function(f){ headerRow.push({v:f.label, s:ST.HDR}); });
+    rows.push(headerRow);
+    rowHeights[rows.length] = 40;
+
+    // Every cell across each row — not just the leftmost one — carries its
+    // own style, so the border and fill run the full width of the row
+    // instead of stopping after the first column.
+    for(var i = 1; i <= LEASE_TEMPLATE_ROWS; i++){
+      var row = [{v:'Lease ' + i, s:ST.TPL_LABEL}];
+      TEMPLATE_FIELDS.forEach(function(f){
+        row.push({v:'', s: f.text ? ST.TPL_VALUE_TEXT : ST.TPL_VALUE});
+      });
+      rows.push(row);
+      rowHeights[rows.length] = 24;
+    }
+
+    return { rows: rows, merges: merges, rowHeights: rowHeights, freezeRow: headerRowNum };
+  }
+
+  function downloadBlankLeaseTemplate(){
+    var bytes, blob;
+    try{
+      var sheet = blankLeaseTemplateSheet();
+      var widths = [14].concat(TEMPLATE_FIELD_WIDTHS);
+      bytes = buildXlsx(sheet.rows, 'Lease details', widths,
+        { merges: sheet.merges, rowHeights: sheet.rowHeights, freezeRow: sheet.freezeRow });
+      blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    } catch(e){
+      showAlert('Could not build the template: ' + (e && e.message ? e.message : e));
+      return;
+    }
+    getDownloads().then(function(handle){
+      if(!handle){ showAlert('This view will not let the page save files, so the template could not be downloaded.'); return; }
+      return handle.save({ filename: 'Lease Ledger - blank template.xlsx', data: blob }).then(function(){
+        toast('Template downloaded');
+      }, function(err){
+        var code = (err && err.code) || 'unknown';
+        if(code === 'declined') return;
+        if(code === 'rate_limited'){ showAlert('A save prompt is already open — finish that one, then try again.'); return; }
+        showAlert('The download was refused (' + code + (err && err.message ? ': ' + err.message : '') + ').');
+      });
+    }).catch(function(e){
+      showAlert('Could not start the download' + (e && e.message ? ' (' + e.message + ')' : '') + '.');
+    });
+  }
+
+  function exportLeaseScheduleExcel(l){
+    var bytes, blob;
+    var pre = computeLease(l);
+    if(!pre.measurable){
+      showAlert('This lease cannot be measured, so there is no schedule to export: ' +
+        pre.issues.join('; ') + '.');
+      return;
+    }
+    try{
+      var calc = pre;
+      var sheet = leaseScheduleSheet(l, calc);
+      bytes = buildXlsx(sheet.rows, 'Amortization schedule',
+        [34, 17, 15, 17, 17, 18, 15, 18],
+        { merges: sheet.merges, rowHeights: sheet.rowHeights, freezeRow: sheet.freezeRow });
+      blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    } catch(e){
+      showAlert('Could not build the Excel file: ' + (e && e.message ? e.message : e));
+      return;
+    }
+    // Keep the filename plain ASCII: exotic characters are a known way for a
+    // save request to be rejected before it ever reaches the viewer.
+    var base = (l.leaseName || 'Lease')
+      .replace(/[^A-Za-z0-9 ()\-_.]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'Lease';
+    var filename = base + ' - amortization schedule.xlsx';
+
+    var settled = false;
+    var giveUp = setTimeout(function(){
+      if(settled) return;
+      settled = true;
+      showScheduleFallback(l, 'The download did not come back with an answer.');
+    }, 9000);
+    function finish(){ settled = true; clearTimeout(giveUp); }
+
+    getDownloads().then(function(handle){
+      if(!handle){ finish(); showScheduleFallback(l, 'This view will not let the page save files.'); return; }
+      return handle.save({ filename: filename, data: blob }).then(function(){ finish(); toast('Excel schedule saved'); }, function(err){
+        if(settled) return;
+        finish();
+        var code = (err && err.code) || 'unknown';
+        if(code === 'declined') return;           // the viewer said no; respect it
+        if(code === 'rate_limited'){
+          showAlert('A save prompt is already open — finish that one, then try again.');
+          return;
+        }
+        showScheduleFallback(l, 'The download was refused (' + code +
+          (err && err.message ? ': ' + err.message : '') + ').');
+      });
+    }).catch(function(e){
+      if(settled) return;
+      finish();
+      showScheduleFallback(l, 'Could not start the download' + (e && e.message ? ' (' + e.message + ')' : '') + '.');
+    });
+  }
+
+  // Guaranteed fallback: if the view cannot hand over a file, show the very
+  // same schedule as a table that can be copied straight into Excel.
+  function showScheduleFallback(l, why){
+    var calc = computeLease(l);
+    if(!calc.measurable){
+      showAlert('This lease cannot be measured, so there is no schedule to copy: ' +
+        calc.issues.join('; ') + '.');
+      return;
+    }
+    var rows = leaseScheduleRows(l, calc);
+    var tsv = rows.map(function(r){
+      return (r || []).map(function(v){ return v === null || v === undefined ? '' : String(v); }).join('\t');
+    }).join('\n');
+    dialogState = { type:'copy', message: why, text: tsv };
+    renderDialog();
+  }
+
+  function fmtINR(n){
+    if(n===null || n===undefined || n==='' || !isFinite(n)) return '—';
+    var neg = n < 0;
+    n = Math.abs(n);
+    var s = '₹' + n.toLocaleString('en-IN', {maximumFractionDigits:0});
+    return neg ? '(' + s + ')' : s;
+  }
+  function fmtPct(n){ return (Number(n)||0).toFixed(2) + '%'; }
+  function fmtDate(s){
+    if(!s) return '—';
+    var d = (s instanceof Date) ? s : parseDate(s);
+    return d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---------- image compression ----------
+  function compressToDataUrl(source, srcW, srcH, cb){
+    var maxDim = 1400;
+    var w = srcW, h = srcH;
+    if(w > h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+    else if(h >= w && h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var quality = 0.72, attempts = 0, dataUrl;
+    function draw(){
+      canvas.width = w; canvas.height = h;
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(source, 0, 0, w, h);
+    }
+    draw();
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+    while(dataUrl.length > 150000 && attempts < 7){
+      if(quality > 0.35){ quality -= 0.12; } else { w = Math.round(w*0.8); h = Math.round(h*0.8); }
+      draw();
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+      attempts++;
+    }
+    cb(dataUrl.length <= 190000 ? dataUrl : null);
+  }
+
+  function compressImageFile(file, cb){
+    if(!file){ cb(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){ compressToDataUrl(img, img.width, img.height, cb); };
+      img.onerror = function(){ cb(null); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function(){ cb(null); };
+    reader.readAsDataURL(file);
+  }
+
+  function canvasToBlob(canvas, type, quality){
+    return new Promise(function(resolve){ canvas.toBlob(function(blob){ resolve(blob); }, type, quality); });
+  }
+
+  function renderPdfPage(pdf, pageNum, targetWidth){
+    return pdf.getPage(pageNum).then(function(page){
+      var vp1 = page.getViewport({scale:1});
+      var scale = targetWidth / vp1.width;
+      var viewport = page.getViewport({scale:scale});
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      var ctx = canvas.getContext('2d');
+      return page.render({canvasContext:ctx, viewport:viewport}).promise.then(function(){ return canvas; });
+    });
+  }
+
+  function ensurePdfWorker(){
+    if(typeof pdfjsLib === 'undefined') throw {code:'pdf_lib_unavailable', message:'PDF reader failed to load.'};
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  }
+
+  // Prefer the PDF's own text layer (works without any image capability); only
+  // fall back to page-image OCR-by-Claude when the PDF has no extractable text
+  // (a pure scanned copy with no text layer).
+  async function pdfToTextAndThumb(file){
+    ensurePdfWorker();
+    var buf = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    var pageCount = Math.min(pdf.numPages, 12);
+    var parts = [];
+    for(var i=1;i<=pageCount;i++){
+      var page = await pdf.getPage(i);
+      var tc = await page.getTextContent();
+      // Join the text runs. A run ending in a hyphen straight after a letter or
+      // digit is a word broken across a line — "…Certificate No. IN-" /
+      // "KA1234…" — so it is rejoined without a space, otherwise long
+      // references (e-Stamp, PAN, GST, CIN) come out split in half. A trailing
+      // "/-" after an amount is NOT a line break, so that keeps its space.
+      var pageText = '';
+      tc.items.forEach(function(it){
+        var piece = it.str;
+        if(pageText === ''){ pageText = piece; return; }
+        if(/[A-Za-z0-9]-$/.test(pageText) && /^[A-Za-z0-9]/.test(piece)) pageText += piece;
+        else pageText += ' ' + piece;
+      });
+      pageText = pageText.replace(/\s+/g, ' ').trim();
+      parts.push('--- Page ' + i + ' ---\n' + pageText);
+    }
+    var fullText = parts.join('\n\n');
+    // A reference can also break across a PAGE boundary ("…No. IN-" at the foot
+    // of one page, "KA1234…" at the head of the next). Rejoin the token and
+    // keep the page marker directly after it.
+    fullText = fullText.replace(
+      /([A-Za-z0-9])-\s*\n\n--- Page (\d+) ---\n([A-Za-z0-9]\S*)/g,
+      '$1-$3\n\n--- Page $2 ---\n');
+    if(fullText.length > 20000) fullText = fullText.slice(0, 20000);
+    var thumbCanvas = await renderPdfPage(pdf, 1, 1200);
+    var meaningfulChars = fullText.replace(/[\s\-–—.:;,()\[\]#]/g, '').replace(/Page\d+/g,'').length;
+    return { text: fullText, thumbCanvas: thumbCanvas, hasText: meaningfulChars > 60, pdf: pdf, pageCount: pageCount };
+  }
+
+  function fileToPageImages(file){
+    var isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name||'');
+    if(!isPdf) return Promise.resolve({ file: file, isPdf: false });
+    ensurePdfWorker();
+    return file.arrayBuffer().then(function(buf){ return pdfjsLib.getDocument({data:buf}).promise; })
+      .then(function(pdf){
+        var pageCount = Math.min(pdf.numPages, 6);
+        var pagePromises = [];
+        for(var i=1;i<=pageCount;i++){ pagePromises.push(renderPdfPage(pdf, i, 1500)); }
+        return Promise.all(pagePromises);
+      })
+      .then(function(canvases){
+        return Promise.all(canvases.map(function(c){ return canvasToBlob(c, 'image/jpeg', 0.85); })).then(function(blobs){
+          return { isPdf:true, blobs: blobs, thumbCanvas: canvases[0] };
+        });
+      });
+  }
+
+  function openLightbox(src){
+    var box = document.getElementById('lightbox');
+    document.getElementById('lightboxImg').src = src;
+    box.classList.add('open');
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var box = document.getElementById('lightbox');
+    if(box) box.addEventListener('click', function(){ box.classList.remove('open'); });
+  });
+
+  // ---------- in-page dialogs ----------
+  // Native window.confirm/prompt/alert are silently blocked in this sandboxed
+  // view (they no-op instead of showing anything), so every confirmation,
+  // prompt and validation message uses this custom overlay instead.
+  var dialogState = null;
+  // Small confirmation that an action went through, without interrupting.
+  var toastTimer = null;
+  function toast(message, kind){
+    var el = document.getElementById('toast');
+    if(!el) return;
+    el.textContent = message;
+    el.className = 'toast show' + (kind === 'bad' ? ' bad' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.className = 'toast' + (kind === 'bad' ? ' bad' : ''); }, 2600);
+  }
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // A plain <input type="date"> relies on the browser's own calendar picker
+  // and keyboard segment handling — both of which are unreliable inside this
+  // embedded view (the same reason native confirm/alert/prompt are avoided
+  // everywhere else in this app). Three ordinary dropdowns need no native
+  // picker and can never produce an unparseable value.
+  function buildDateSelectsHtml(defaultVal, idPrefix){
+    idPrefix = idPrefix || 'dp';
+    var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(defaultVal || '');
+    var defYear = d ? Number(d[1]) : new Date().getFullYear();
+    var defMonth = d ? Number(d[2]) : (new Date().getMonth() + 1);
+    var defDay = d ? Number(d[3]) : new Date().getDate();
+    var i, html = '';
+    html += '<select id="' + idPrefix + 'Day" style="flex:0.8;">';
+    for(i=1;i<=31;i++){ html += '<option value="' + pad2(i) + '"' + (i===defDay?' selected':'') + '>' + i + '</option>'; }
+    html += '</select>';
+    html += '<select id="' + idPrefix + 'Month" style="flex:1.3;">';
+    for(i=1;i<=12;i++){ html += '<option value="' + pad2(i) + '"' + (i===defMonth?' selected':'') + '>' + MONTH_NAMES[i-1] + '</option>'; }
+    html += '</select>';
+    html += '<select id="' + idPrefix + 'Year" style="flex:0.9;">';
+    var startY = defYear - 15, endY = defYear + 15;
+    for(i=startY;i<=endY;i++){ html += '<option value="' + i + '"' + (i===defYear?' selected':'') + '>' + i + '</option>'; }
+    html += '</select>';
+    return html;
+  }
+  function readDateSelects(overlay, idPrefix){
+    idPrefix = idPrefix || 'dp';
+    var dEl = overlay.querySelector('#' + idPrefix + 'Day'), mEl = overlay.querySelector('#' + idPrefix + 'Month'), yEl = overlay.querySelector('#' + idPrefix + 'Year');
+    if(!dEl || !mEl || !yEl) return null;
+    var day = dEl.value, month = mEl.value, year = yEl.value;
+    var iso = year + '-' + month + '-' + day;
+    // Confirm the date actually exists (e.g. reject 31 Feb) by round-tripping it.
+    var check = new Date(Number(year), Number(month) - 1, Number(day));
+    if(check.getFullYear() !== Number(year) || check.getMonth() !== Number(month) - 1 || check.getDate() !== Number(day)){
+      return { invalid: true };
+    }
+    return { iso: iso };
+  }
+
+  function showAlert(message){ dialogState = { type:'alert', message:message }; renderDialog(); }
+  function showConfirm(message, onYes){ dialogState = { type:'confirm', message:message, onYes:onYes }; renderDialog(); }
+  function showPrompt(message, defaultVal, onSubmit){ dialogState = { type:'prompt', message:message, defaultVal:defaultVal||'', onSubmit:onSubmit }; renderDialog(); }
+  function closeDialog(){ dialogState = null; renderDialog(); }
+
+  function renderDialog(){
+    var overlay = document.getElementById('dialogModal');
+    if(!dialogState){ overlay.classList.remove('open'); overlay.innerHTML = ''; return; }
+    overlay.classList.add('open');
+    var box = '';
+    if(dialogState.type === 'alert'){
+      box = '<div class="modal-box"><p class="hint" style="margin-bottom:0;">' + esc(dialogState.message) + '</p>' +
+        '<div class="modal-actions"><button class="btn" data-dialog-ok>OK</button></div></div>';
+    } else if(dialogState.type === 'confirm'){
+      box = '<div class="modal-box"><p class="hint" style="margin-bottom:0;">' + esc(dialogState.message) + '</p>' +
+        '<div class="modal-actions"><button class="btn secondary" data-dialog-cancel>Cancel</button><button class="btn" data-dialog-yes>Confirm</button></div></div>';
+    } else if(dialogState.type === 'copy'){
+      box = '<div class="modal-box wide"><h3>Copy the schedule into Excel</h3>' +
+        '<p class="hint">' + esc(dialogState.message) + ' The full schedule is below — press Copy, then paste into a blank Excel sheet and it lands in proper columns.</p>' +
+        '<textarea id="copyArea" readonly style="width:100%; height:190px; font-family:\'IBM Plex Mono\', monospace; font-size:11.5px; background:var(--bg); color:var(--ink); border:1px solid var(--border); border-radius:7px; padding:10px;">' + esc(dialogState.text) + '</textarea>' +
+        '<div class="modal-actions"><span id="copyMsg" class="hint" style="margin:0 auto 0 0;"></span>' +
+        '<button class="btn secondary" data-dialog-cancel>Close</button>' +
+        '<button class="btn" data-dialog-copy>Copy</button></div></div>';
+    } else if(dialogState.type === 'prompt'){
+      box = '<div class="modal-box"><h3>' + esc(dialogState.message) + '</h3>' +
+        '<p class="hint">Choose the date.</p>' +
+        '<div style="display:flex; gap:8px; margin-bottom:6px;">' + buildDateSelectsHtml(dialogState.defaultVal) + '</div>' +
+        '<div id="promptErr" class="hint" style="color:var(--bad); min-height:16px; margin-bottom:8px;"></div>' +
+        '<div class="modal-actions"><button class="btn secondary" data-dialog-cancel>Cancel</button><button class="btn" data-dialog-submit>Confirm derecognition</button></div></div>';
+    }
+    overlay.innerHTML = box;
+    var okBtn = overlay.querySelector('[data-dialog-ok]');
+    if(okBtn) okBtn.addEventListener('click', closeDialog);
+    var copyBtn = overlay.querySelector('[data-dialog-copy]');
+    if(copyBtn) copyBtn.addEventListener('click', function(){
+      var ta = overlay.querySelector('#copyArea');
+      var msg = overlay.querySelector('#copyMsg');
+      if(!ta) return;
+      var text = ta.value;
+
+      function done(ok){
+        if(msg) msg.textContent = ok
+          ? 'Copied — paste into Excel.'
+          : 'Could not copy automatically — select the text above and press Ctrl+C.';
+        if(copyBtn) copyBtn.disabled = true;
+        if(ok){ setTimeout(closeDialog, 600); toast('Schedule copied — paste it into Excel'); }   // show the confirmation, then close
+      }
+
+      // Only touch the selection if the clipboard API is unavailable or
+      // refuses — selecting first is what made the text flash on and off.
+      function legacyCopy(){
+        try{
+          ta.focus({ preventScroll: true });
+          ta.setSelectionRange(0, text.length);
+          var ok = document.execCommand('copy');
+          if(ok){
+            ta.setSelectionRange(0, 0);
+            ta.blur();
+          }
+          return ok;
+        } catch(e){ return false; }
+      }
+
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ done(true); },
+                                                 function(){ done(legacyCopy()); });
+      } else {
+        done(legacyCopy());
+      }
+    });
+    var cancelBtn = overlay.querySelector('[data-dialog-cancel]');
+    if(cancelBtn) cancelBtn.addEventListener('click', closeDialog);
+    var yesBtn = overlay.querySelector('[data-dialog-yes]');
+    if(yesBtn) yesBtn.addEventListener('click', function(){ var cb = dialogState.onYes; closeDialog(); if(cb) cb(); });
+    var submitBtn = overlay.querySelector('[data-dialog-submit]');
+    var dayEl = overlay.querySelector('#dpDay');
+    if(submitBtn && dayEl){
+      submitBtn.addEventListener('click', function(){
+        try{
+          var picked = readDateSelects(overlay);
+          var note = overlay.querySelector('#promptErr');
+          if(!picked || picked.invalid){
+            if(note) note.textContent = 'That date doesn\'t exist — check the day and month.';
+            return;
+          }
+          var cb = dialogState.onSubmit;
+          closeDialog();
+          if(cb) cb(picked.iso);
+        } catch(clickErr){
+          showAlert('Could not confirm derecognition: ' + (clickErr && clickErr.message ? clickErr.message : String(clickErr)) + '.');
+        }
+      });
+      dayEl.focus();
+    }
+  }
+
+  // ---------- extraction ----------
+  var EXTRACT_PROMPT = 'You are extracting key facts from a scanned Indian lease or sublease agreement, for statutory audit purposes under Ind AS 116. Read the attached page image(s) carefully and reply with ONLY a JSON object with exactly these keys. Use null for anything genuinely not stated. Dates must be "YYYY-MM-DD". Money values must be plain numbers, no currency symbol or commas, excluding GST unless GST is the only figure given.\n' +
+    '{\n' +
+    '"leaseTitle": string|null,        // a short label for this agreement, e.g. "Office sublease - Bommanahalli, Bengaluru"\n' +
+    '"lessorName": string|null,        // party granting the lease/sublease (landlord, original lessor, or sub-lessor)\n' +
+    '"lesseeName": string|null,        // party receiving the lease/sublease (tenant, lessee, or sub-lessee)\n' +
+    '"premises": string|null,          // short description of the leased premises/asset and its address\n' +
+    '"commencementDate": string|null,\n' +
+    '"endDate": string|null,\n' +
+    '"monthlyRent": number|null,       // base monthly rent/lease rent only, excluding GST and maintenance/CAM\n' +
+    '"maintenanceCharge": number|null, // monthly maintenance/CAM/utility charge billed separately, excluding GST\n' +
+    '"securityDeposit": number|null,\n' +
+    '"variableRentNote": string|null,  // one short sentence on any escalation/variability clause (index, headcount, landlord-linked, etc.); null if rent is flat fixed\n' +
+    '"paymentDueNote": string|null,    // e.g. "1st of every month"\n' +
+    '"stampDutyAmount": number|null,\n' +
+    '"stampCertificateNo": string|null\n' +
+    '}\n' +
+    'Reply with only the JSON object, nothing else.';
+
+  // The scan is read by a language model, so a value can come back as
+  // "Rs. 2,00,000/- per month" or "01/07/2025" even though the prompt asks for
+  // plain numbers and ISO dates. Everything is normalised here, once, before
+  // any of it is shown or saved — otherwise a stray symbol becomes a NaN in
+  // the ledger.
+  function pad2(n){ n = String(n); return n.length < 2 ? '0' + n : n; }
+
+  function firstNumber(v){
+    if(v === null || v === undefined || v === '') return null;
+    if(typeof v === 'number') return isFinite(v) ? v : null;
+    // take the FIRST numeric run, so "2,00,000 plus 18% GST" gives the rent,
+    // not the two figures run together
+    var m = String(v).match(/-?\d[\d,]*(?:\.\d+)?/);
+    if(!m) return null;
+    var n = Number(m[0].replace(/,/g, ''));
+    return isFinite(n) ? n : null;
+  }
+
+  function normalizeDate(v){
+    if(v === null || v === undefined) return null;
+    var s = String(v).trim();
+    if(!s) return null;
+    // Indian agreements write dates as "1st April 2025" or
+    // "25th day of March, 2025". Strip the ordinal suffix and the "day of"
+    // phrasing, otherwise the date is unreadable and the lease cannot be
+    // measured at all.
+    s = s.replace(/(\d+)\s*(?:st|nd|rd|th)\b/gi, '$1')
+         .replace(/(\d+)\s+day\s+of\s+/i, '$1 ')
+         .replace(/\s+/g, ' ')
+         .trim();
+    var m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);        // 2025-7-1
+    if(m) return m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]);
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);            // 01/07/2025 (Indian order: day first)
+    if(m && Number(m[1]) <= 31 && Number(m[2]) <= 12){
+      return m[3] + '-' + pad2(m[2]) + '-' + pad2(m[1]);
+    }
+    m = s.match(/^(\d{1,2})\s+(\d{1,2})\s+(\d{4})$/);                  // 31 03 2028 (DD MM YYYY, space-separated)
+    if(m && Number(m[1]) <= 31 && Number(m[2]) <= 12){
+      return m[3] + '-' + pad2(m[2]) + '-' + pad2(m[1]);
+    }
+    var d = new Date(s);                                                // "1 July 2025"
+    if(!isNaN(d.getTime()) && d.getFullYear() > 1900 && d.getFullYear() < 2200){
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    return null;
+  }
+
+  function normalizeExtracted(d){
+    d = d || {};
+    var out = {};
+    ['leaseTitle','lessorName','lesseeName','premises','variableRentNote',
+     'paymentDueNote','stampCertificateNo'].forEach(function(k){
+      var v = d[k];
+      out[k] = (v === null || v === undefined) ? null : (String(v).trim() || null);
+    });
+    out.commencementDate = normalizeDate(d.commencementDate);
+    out.endDate = normalizeDate(d.endDate);
+    ['monthlyRent','maintenanceCharge','securityDeposit','stampDutyAmount','discountRate'].forEach(function(k){
+      out[k] = firstNumber(d[k]);
+    });
+    return out;
+  }
+
+  // ---------- non-PDF, non-image document readers ----------
+  // These pull plain text out of the file entirely on-device and send that
+  // text to Claude — no image capability required, so they work even in a
+  // view where photo reading is unavailable.
+
+  function stripHtmlToText(doc){
+    doc.querySelectorAll('script,style,noscript,head').forEach(function(n){ n.remove(); });
+    return (doc.body ? doc.body.textContent : doc.documentElement.textContent) || '';
+  }
+
+  async function extractTextFromHtmlFile(file){
+    var raw = await file.text();
+    var doc = new DOMParser().parseFromString(raw, 'text/html');
+    return stripHtmlToText(doc);
+  }
+
+  function decodeQuotedPrintable(s){
+    s = s.replace(/=\r?\n/g, '');
+    s = s.replace(/=([0-9A-Fa-f]{2})/g, function(_, hex){ return String.fromCharCode(parseInt(hex, 16)); });
+    try{
+      var bytes = new Uint8Array(s.length);
+      for(var i=0;i<s.length;i++) bytes[i] = s.charCodeAt(i) & 0xff;
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch(e){ return s; }
+  }
+
+  // A saved web page (.mht/.mhtml) is a MIME multipart message; pull out the
+  // text/html part (usually quoted-printable, sometimes base64) and strip it.
+  async function extractTextFromMhtmlFile(file){
+    var raw = await file.text();
+    var bm = raw.match(/boundary="?([^"\r\n;]+)"?/i);
+    var htmlPart = null;
+    if(bm){
+      var boundary = bm[1];
+      var parts = raw.split('--' + boundary);
+      for(var i=0;i<parts.length;i++){
+        var p = parts[i];
+        if(/Content-Type:\s*text\/html/i.test(p)){
+          var headerEnd = p.search(/\r?\n\r?\n/);
+          if(headerEnd < 0) continue;
+          var header = p.slice(0, headerEnd);
+          var body = p.slice(headerEnd).replace(/^\r?\n\r?\n/, '');
+          if(/quoted-printable/i.test(header)) body = decodeQuotedPrintable(body);
+          else if(/base64/i.test(header)) { try{ body = atob(body.replace(/[\r\n]/g,'')); } catch(e){} }
+          htmlPart = body;
+          break;
+        }
+      }
+    }
+    if(!htmlPart) htmlPart = raw;
+    var doc = new DOMParser().parseFromString(htmlPart, 'text/html');
+    return stripHtmlToText(doc);
+  }
+
+  function inflateRaw(bytes){
+    var ds = new DecompressionStream('deflate-raw');
+    var stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Response(stream).arrayBuffer().then(function(buf){ return new Uint8Array(buf); });
+  }
+
+  // Minimal ZIP central-directory reader — enough to pull one named entry
+  // (word/document.xml) out of a .docx without a general zip library.
+  function findZipEntry(buf, name){
+    var dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    var eocdSig = 0x06054b50;
+    var minI = Math.max(0, buf.length - 22 - 65557);
+    var eocdOffset = -1;
+    for(var i = buf.length - 22; i >= minI; i--){
+      if(dv.getUint32(i, true) === eocdSig){ eocdOffset = i; break; }
+    }
+    if(eocdOffset < 0) return null;
+    var cdOffset = dv.getUint32(eocdOffset + 16, true);
+    var entryCount = dv.getUint16(eocdOffset + 10, true);
+    var p = cdOffset, cdSig = 0x02014b50;
+    for(var e=0; e<entryCount; e++){
+      if(dv.getUint32(p, true) !== cdSig) break;
+      var method = dv.getUint16(p + 10, true);
+      var compSize = dv.getUint32(p + 20, true);
+      var nameLen = dv.getUint16(p + 28, true);
+      var extraLen = dv.getUint16(p + 30, true);
+      var commentLen = dv.getUint16(p + 32, true);
+      var localOffset = dv.getUint32(p + 42, true);
+      var entryName = new TextDecoder('utf-8').decode(buf.subarray(p + 46, p + 46 + nameLen));
+      if(entryName === name){
+        var lfhNameLen = dv.getUint16(localOffset + 26, true);
+        var lfhExtraLen = dv.getUint16(localOffset + 28, true);
+        var dataStart = localOffset + 30 + lfhNameLen + lfhExtraLen;
+        return { method: method, data: buf.subarray(dataStart, dataStart + compSize) };
+      }
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return null;
+  }
+
+  async function extractTextFromDocxFile(file){
+    var buf = new Uint8Array(await file.arrayBuffer());
+    var entry = findZipEntry(buf, 'word/document.xml');
+    if(!entry) throw new Error('not a valid Word (.docx) file');
+    var xmlBytes = entry.method === 0 ? entry.data : await inflateRaw(entry.data);
+    var xml = new TextDecoder('utf-8').decode(xmlBytes);
+    xml = xml.replace(/<\/w:p>/g, '\n').replace(/<w:tab\/>/g, '\t').replace(/<[^>]+>/g, '');
+    return xml.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+  }
+
+  // ---------- reading a filled-in Excel template (no AI, no OCR) ----------
+  function xmlUnescape(s){
+    return String(s == null ? '' : s)
+      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+  }
+
+  function parseSharedStrings(xml){
+    if(!xml) return [];
+    var strings = [], siRe = /<si[^>]*>([\s\S]*?)<\/si>/g, m;
+    while((m = siRe.exec(xml))){
+      var t = '', tRe = /<t[^>]*>([\s\S]*?)<\/t>/g, tm;
+      while((tm = tRe.exec(m[1]))){ t += tm[1]; }
+      strings.push(xmlUnescape(t));
+    }
+    return strings;
+  }
+
+  // Cell refs -> raw value (as typed/displayed), resolving shared-string and
+  // inline-string cells; numeric and plain-text cells come through as-is.
+  function parseSheetCells(xml, sharedStrings){
+    var cells = {};
+    var rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g, rm;
+    while((rm = rowRe.exec(xml))){
+      var cRe = /<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, cm;
+      while((cm = cRe.exec(rm[1]))){
+        var ref = cm[1], attrs = cm[2] || '', inner = cm[3] || '';
+        var tm2 = /\bt="([^"]+)"/.exec(attrs);
+        var type = tm2 ? tm2[1] : null;
+        var val = null;
+        if(type === 'inlineStr'){
+          var ism = /<is>([\s\S]*?)<\/is>/.exec(inner);
+          if(ism){
+            var t = '', tRe2 = /<t[^>]*>([\s\S]*?)<\/t>/g, tm3;
+            while((tm3 = tRe2.exec(ism[1]))){ t += tm3[1]; }
+            val = xmlUnescape(t);
+          }
+        } else {
+          var vm = /<v>([\s\S]*?)<\/v>/.exec(inner);
+          if(vm){
+            if(type === 's'){ var idx = Number(vm[1]); val = (sharedStrings && sharedStrings[idx] != null) ? sharedStrings[idx] : ''; }
+            else if(type === 'str'){ val = xmlUnescape(vm[1]); }
+            else { val = vm[1]; }               // plain number
+          }
+        }
+        cells[ref] = val;
+      }
+    }
+    return cells;
+  }
+
+  function classifyTemplateLabel(label){
+    var s = label.toLowerCase();
+    if(s.indexOf('counterparty') >= 0) return 'counterpartyName';
+    if(s.indexOf('company') >= 0) return 'companyName';
+    if(s.indexOf('lessor') >= 0) return 'lessorName';
+    if(s.indexOf('lessee') >= 0) return 'lesseeName';
+    if(s.indexOf('premises') >= 0 || s.indexOf('property address') >= 0) return 'premises';
+    if(s.indexOf('commencement') >= 0) return 'commencementDate';
+    if(s.indexOf('end date') >= 0) return 'endDate';
+    if(s.indexOf('monthly rent') >= 0) return 'monthlyRent';
+    if(s.indexOf('maintenance') >= 0 || s.indexOf('cam') >= 0) return 'maintenanceCharge';
+    if(s.indexOf('security deposit') >= 0) return 'securityDeposit';
+    if(s.indexOf('payment due') >= 0) return 'paymentDueNote';
+    if(s.indexOf('discount') >= 0 || s.indexOf('interest rate') >= 0) return 'discountRate';
+    if(s.indexOf('e-stamp') >= 0 || s.indexOf('certificate') >= 0) return 'stampCertificateNo';
+    if(s.indexOf('stamp duty') >= 0) return 'stampDutyAmount';
+    if(s.indexOf('asset') >= 0 || s.indexOf('lease name') >= 0) return 'leaseTitle';
+    if(s.indexOf('variable') >= 0 || s.indexOf('escalation') >= 0) return 'variableRentNote';
+    return null;
+  }
+
+  // Groups raw cells by row and finds the HEADER row — the row whose cells'
+  // text match the most known field labels — entirely by content, not by a
+  // fixed row number, so inserted/removed rows above it (extra notes, a
+  // moved title) never break reading. Every OTHER row is then a candidate
+  // data row: one lease per row, with each column mapped to its field by
+  // that column's header text (not its letter), so reordering columns is
+  // harmless too — only renaming a header breaks it.
+  // Returns { rows, colKeyMap: {colLetter: fieldKey}, headerRowNum, dataRowNums }.
+  function xlsxColsToMultiLeaseMap(cells){
+    var rows = {};
+    Object.keys(cells).forEach(function(ref){
+      var m = /^([A-Z]+)(\d+)$/.exec(ref);
+      if(!m) return;
+      var rowNum = Number(m[2]);
+      rows[rowNum] = rows[rowNum] || {};
+      rows[rowNum][m[1]] = cells[ref];
+    });
+    var headerRowNum = null, bestScore = 0;
+    Object.keys(rows).map(Number).sort(function(a,b){ return a-b; }).forEach(function(r){
+      var score = 0;
+      Object.keys(rows[r]).forEach(function(col){
+        var v = rows[r][col];
+        if(v === null || v === undefined) return;
+        if(classifyTemplateLabel(String(v).trim())) score++;
+      });
+      if(score > bestScore){ bestScore = score; headerRowNum = r; }
+    });
+    if(headerRowNum === null || bestScore < 2){
+      return { rows: rows, colKeyMap: {}, headerRowNum: null, dataRowNums: [] };
+    }
+    var colKeyMap = {};
+    Object.keys(rows[headerRowNum]).forEach(function(col){
+      var v = rows[headerRowNum][col];
+      if(v === null || v === undefined) return;
+      var key = classifyTemplateLabel(String(v).trim());
+      if(key) colKeyMap[col] = key;
+    });
+    var dataRowNums = Object.keys(rows).map(Number)
+      .filter(function(r){ return r > headerRowNum; })
+      .sort(function(a,b){ return a-b; });
+    return { rows: rows, colKeyMap: colKeyMap, headerRowNum: headerRowNum, dataRowNums: dataRowNums };
+  }
+
+  // Walks every data row under the header and returns one { leaseData,
+  // companyName, counterpartyName, rowLabel } entry per row that has at
+  // least one recognised field filled in. rowLabel is whatever is typed in
+  // that row's leftmost ("Lease") column, or "Row N" (the actual Excel row
+  // number) if that was left blank or renamed.
+  function extractLeasesFromMultiColTemplate(map){
+    var entries = [];
+    if(!map.headerRowNum) return entries;
+    map.dataRowNums.forEach(function(r){
+      var rowVals = map.rows[r] || {};
+      var leaseData = {}, companyName = null, counterpartyName = null, found = false;
+      Object.keys(map.colKeyMap).forEach(function(col){
+        var key = map.colKeyMap[col];
+        var v = rowVals[col];
+        if(v === undefined || v === null) return;
+        v = String(v).trim();
+        if(!v) return;
+        found = true;
+        if(key === 'companyName') companyName = v;
+        else if(key === 'counterpartyName') counterpartyName = v;
+        else leaseData[key] = v;
+      });
+      if(found){
+        var rowLabelRaw = rowVals['A'];
+        var rowLabel = (rowLabelRaw !== undefined && rowLabelRaw !== null && String(rowLabelRaw).trim())
+          ? String(rowLabelRaw).trim() : ('Row ' + r);
+        entries.push({ leaseData: leaseData, companyName: companyName, counterpartyName: counterpartyName, rowLabel: rowLabel });
+      }
+    });
+    return entries;
+  }
+
+  // Reads a filled-in copy of the template above straight into an array of
+  // lease entries — one per filled-in row — each in the same shape
+  // extractFromFile() would have produced for a single lease. Entirely
+  // on-device, no Claude call and no OCR at all.
+  async function extractFromXlsxTemplate(file){
+    var buf = new Uint8Array(await file.arrayBuffer());
+    var sheetEntry = findZipEntry(buf, 'xl/worksheets/sheet1.xml');
+    if(!sheetEntry) throw { code:'xlsx_invalid', message:'This doesn\'t look like a valid Excel (.xlsx) file — the lease details sheet could not be found.' };
+    var sheetXmlBytes = sheetEntry.method === 0 ? sheetEntry.data : await inflateRaw(sheetEntry.data);
+    var sheetXml = new TextDecoder('utf-8').decode(sheetXmlBytes);
+
+    var sharedStrings = [];
+    var sstEntry = findZipEntry(buf, 'xl/sharedStrings.xml');
+    if(sstEntry){
+      var sstBytes = sstEntry.method === 0 ? sstEntry.data : await inflateRaw(sstEntry.data);
+      sharedStrings = parseSharedStrings(new TextDecoder('utf-8').decode(sstBytes));
+    }
+
+    var map = xlsxColsToMultiLeaseMap(parseSheetCells(sheetXml, sharedStrings));
+    var entries = extractLeasesFromMultiColTemplate(map);
+    if(!entries.length){
+      throw { code:'xlsx_empty', message:'No filled-in fields were found in this spreadsheet — download the template, fill it in, and upload it again.' };
+    }
+    return entries;
+  }
+
+  // ---------- on-device OCR fallback ----------
+  // When this view can't send photos to Claude at all, a photo or a scanned
+  // PDF is instead read entirely in the browser with a WebAssembly build of
+  // Tesseract, run in a background worker. The English model is pulled once
+  // from this artifact's own database (a doc is capped at 256KB, so it's
+  // stored in chunks) and cached in IndexedDB so later scans are instant.
+  // Only the recognised TEXT (never the image) is then sent to Claude.
+  var ocrReadyPromise = null;
+  var ocrModelBytesPromise = null;
+  var ocrReqSeq = 0;
+
+  function ocrIdbGet(key){
+    return new Promise(function(resolve){
+      try{
+        var req = indexedDB.open('leaseLedgerOcr', 1);
+        req.onupgradeneeded = function(){ req.result.createObjectStore('kv'); };
+        req.onsuccess = function(){
+          var tx = req.result.transaction('kv', 'readonly');
+          var g = tx.objectStore('kv').get(key);
+          g.onsuccess = function(){ resolve(g.result || null); };
+          g.onerror = function(){ resolve(null); };
+        };
+        req.onerror = function(){ resolve(null); };
+      } catch(e){ resolve(null); }
+    });
+  }
+  function ocrIdbSet(key, value){
+    return new Promise(function(resolve){
+      try{
+        var req = indexedDB.open('leaseLedgerOcr', 1);
+        req.onupgradeneeded = function(){ req.result.createObjectStore('kv'); };
+        req.onsuccess = function(){
+          var tx = req.result.transaction('kv', 'readwrite');
+          tx.objectStore('kv').put(value, key);
+          tx.oncomplete = function(){ resolve(true); };
+          tx.onerror = function(){ resolve(false); };
+        };
+        req.onerror = function(){ resolve(false); };
+      } catch(e){ resolve(false); }
+    });
+  }
+  function base64ToBytes(b64){
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  async function getOcrModelBytes(){
+    if(ocrModelBytesPromise) return ocrModelBytesPromise;
+    ocrModelBytesPromise = (async function(){
+      var cached = await ocrIdbGet('eng_traineddata_v1');
+      if(cached) return cached;
+      if(!db) throw new Error('no database connection available to fetch the language model');
+      var metaDoc = await db.doc('ocr_model/eng_meta').get();
+      var meta = metaDoc && metaDoc.data();
+      if(!meta || !meta.chunks) throw new Error('the on-device text recognition model is not available in this copy of the app');
+      var parts = [];
+      for(var i=0;i<meta.chunks;i++){
+        var id = 'eng_' + (i<10 ? '0'+i : i);
+        var d = await db.doc('ocr_model/'+id).get();
+        var v = d && d.data();
+        if(!v || typeof v.data !== 'string') throw new Error('the on-device text recognition model is incomplete');
+        parts.push(v.data);
+      }
+      var gz = base64ToBytes(parts.join(''));
+      var stream = new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'));
+      var buf = await new Response(stream).arrayBuffer();
+      var bytes = new Uint8Array(buf);
+      await ocrIdbSet('eng_traineddata_v1', bytes);
+      return bytes;
+    })();
+    return ocrModelBytesPromise;
+  }
+
+  function ensureOcrWorker(){
+    if(ocrReadyPromise) return ocrReadyPromise;
+    ocrReadyPromise = new Promise(function(resolve, reject){
+      try{
+        var code = "importScripts('https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-lstm.wasm.js');" +
+          "var ctxPromise = null;" +
+          "self.onmessage = function(e){" +
+          "  var msg = e.data;" +
+          "  if(msg.type === 'init'){" +
+          "    ctxPromise = TesseractCore({}).then(function(mod){" +
+          "      mod.FS.writeFile('./eng.traineddata', msg.modelBytes);" +
+          "      var api = new mod.TessBaseAPI();" +
+          "      var rc = api.Init(null, 'eng', 1);" +
+          "      if(rc === -1) throw new Error('text recognition engine failed to initialise');" +
+          "      return { mod: mod, api: api };" +
+          "    });" +
+          "    ctxPromise.then(function(){ self.postMessage({type:'ready'}); })" +
+          "      .catch(function(err){ self.postMessage({type:'error', message:String(err && err.message || err)}); });" +
+          "  } else if(msg.type === 'recognize'){" +
+          "    ctxPromise.then(function(ctx){" +
+          "      try{" +
+          "        ctx.mod.FS.writeFile('/input', msg.imageBytes);" +
+          "        if(ctx.api.SetImageFile(1, 0) === 1) throw new Error('could not read this image');" +
+          "        ctx.api.Recognize(null);" +
+          "        var text = ctx.api.GetUTF8Text();" +
+          "        self.postMessage({type:'text', id:msg.id, text:text});" +
+          "      } catch(err){ self.postMessage({type:'error', id:msg.id, message:String(err && err.message || err)}); }" +
+          "    });" +
+          "  }" +
+          "};";
+        var blob = new Blob([code], {type:'application/javascript'});
+        var url = URL.createObjectURL(blob);
+        var w = new Worker(url);
+        var settled = false;
+        w.onmessage = function(e){
+          if(e.data.type === 'ready' && !settled){ settled = true; resolve(w); }
+          else if(e.data.type === 'error' && !settled){ settled = true; reject(new Error(e.data.message || 'text recognition engine failed to start')); }
+        };
+        w.onerror = function(){ if(!settled){ settled = true; reject(new Error('text recognition engine failed to start')); } };
+        getOcrModelBytes().then(function(modelBytes){
+          w.postMessage({type:'init', modelBytes: modelBytes});
+        }).catch(function(err){ if(!settled){ settled = true; reject(err); } });
+      } catch(e){ reject(e); }
+    });
+    return ocrReadyPromise;
+  }
+
+  function ocrRecognize(imageBytes){
+    return ensureOcrWorker().then(function(w){
+      return new Promise(function(resolve, reject){
+        var id = ++ocrReqSeq;
+        function onMsg(e){
+          if(e.data.id !== id) return;
+          w.removeEventListener('message', onMsg);
+          if(e.data.type === 'text') resolve(e.data.text || '');
+          else reject(new Error(e.data.message || 'on-device text recognition failed'));
+        }
+        w.addEventListener('message', onMsg);
+        w.postMessage({type:'recognize', id:id, imageBytes: imageBytes});
+      });
+    });
+  }
+
+  function blobToBytes(blob){
+    return blob.arrayBuffer().then(function(buf){ return new Uint8Array(buf); });
+  }
+
+  async function extractFromFile(file){
+    if(!sampleFn) throw {code:'no_sample', message:'Auto-extract isn\'t available in this view — the page could not reach your Claude account.'};
+
+    var fname = (file.name || '').toLowerCase();
+    var isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(fname);
+    var isHtml = !isPdf && (file.type === 'text/html' || /\.(html?|xhtml)$/i.test(fname));
+    var isMhtml = !isPdf && (/\.(mht|mhtml)$/i.test(fname) || file.type === 'multipart/related' || file.type === 'message/rfc822');
+    var isDocx = !isPdf && (/\.docx$/i.test(fname) || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    var isTxt = !isPdf && !isHtml && !isMhtml && !isDocx && (file.type === 'text/plain' || /\.txt$/i.test(fname));
+
+    // Path 1: PDF with a real text layer — no image capability needed at all.
+    if(isPdf){
+      var pt = await pdfToTextAndThumb(file);
+      if(pt.hasText){
+        var data = await sampleFn.json(EXTRACT_PROMPT + '\n\nDocument text (extracted from the PDF, page breaks marked):\n' + pt.text, { modelTier: 'default' });
+        var pendingImg = await new Promise(function(resolve){ compressToDataUrl(pt.thumbCanvas, pt.thumbCanvas.width, pt.thumbCanvas.height, function(u){ resolve(u?{dataUrl:u,name:file.name}:null); }); });
+        return { data: data, pendingImage: pendingImg };
+      }
+    }
+
+    // Path 1b: a Word file, saved web page (.html/.mhtml) or plain text file —
+    // read entirely on-device, no image capability needed.
+    if(isHtml || isMhtml || isDocx || isTxt){
+      var docText;
+      try{
+        if(isHtml) docText = await extractTextFromHtmlFile(file);
+        else if(isMhtml) docText = await extractTextFromMhtmlFile(file);
+        else if(isDocx) docText = await extractTextFromDocxFile(file);
+        else docText = await file.text();
+      } catch(readErr){
+        throw { code:'text_extract_failed', message: 'Could not read this file' + (readErr && readErr.message ? (' (' + readErr.message + ')') : '') + '.' };
+      }
+      docText = (docText || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+      if(docText.length < 20){
+        throw { code:'text_extract_empty', message:'No readable text was found in this file.' };
+      }
+      if(docText.length > 20000) docText = docText.slice(0, 20000);
+      var data1b = await sampleFn.json(EXTRACT_PROMPT + '\n\nDocument text (extracted from the uploaded file):\n' + docText, { modelTier: 'default' });
+      return { data: data1b, pendingImage: null };
+    }
+
+    // Path 2: a photo, or a scanned PDF with no text layer — needs image capability.
+    var limits = await sampleFn.limits().catch(function(){ return null; });
+    if(limits && limits.images){
+      var pages = await fileToPageImages(file);
+      var images, thumbSource, thumbW, thumbH;
+      if(pages.isPdf === false){ images = [pages.file]; }
+      else { images = pages.blobs; thumbSource = pages.thumbCanvas; thumbW = pages.thumbCanvas.width; thumbH = pages.thumbCanvas.height; }
+
+      var data2 = await sampleFn.json(EXTRACT_PROMPT, { images: images, modelTier: 'default' });
+
+      var pendingImg2 = null;
+      if(thumbSource){
+        pendingImg2 = await new Promise(function(resolve){ compressToDataUrl(thumbSource, thumbW, thumbH, function(u){ resolve(u?{dataUrl:u,name:file.name}:null); }); });
+      } else {
+        pendingImg2 = await new Promise(function(resolve){ compressImageFile(file, function(u){ resolve(u?{dataUrl:u,name:file.name}:null); }); });
+      }
+      return { data: data2, pendingImage: pendingImg2 };
+    }
+
+    // Path 3: this view can't send photos to Claude at all — fall back to
+    // reading the photo (or scanned PDF pages) entirely on-device with OCR,
+    // then send only the recognised text.
+    try{
+      var ocrText, ocrThumb = null;
+      if(isPdf){
+        var pdfPages = await fileToPageImages(file);
+        var texts = [];
+        var maxPages = Math.min(pdfPages.blobs.length, 4); // bound how long a scan takes
+        for(var pi=0; pi<maxPages; pi++){
+          var pageBytes = await blobToBytes(pdfPages.blobs[pi]);
+          var pageText = await ocrRecognize(pageBytes);
+          texts.push('--- Page ' + (pi+1) + ' ---\n' + pageText);
+        }
+        ocrText = texts.join('\n\n');
+        ocrThumb = await new Promise(function(resolve){ compressToDataUrl(pdfPages.thumbCanvas, pdfPages.thumbCanvas.width, pdfPages.thumbCanvas.height, function(u){ resolve(u?{dataUrl:u,name:file.name}:null); }); });
+      } else {
+        var imgBytes = new Uint8Array(await file.arrayBuffer());
+        ocrText = await ocrRecognize(imgBytes);
+        ocrThumb = await new Promise(function(resolve){ compressImageFile(file, function(u){ resolve(u?{dataUrl:u,name:file.name}:null); }); });
+      }
+      ocrText = (ocrText || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+      if(ocrText.length < 20){
+        throw { code:'ocr_empty', message: 'On-device text recognition could not find readable text in this ' + (isPdf ? 'scan' : 'photo') + '. Try a clearer image, or upload the agreement as a PDF with selectable text, a Word (.docx) file, or a saved web page instead.' };
+      }
+      if(ocrText.length > 20000) ocrText = ocrText.slice(0, 20000);
+      var data3 = await sampleFn.json(EXTRACT_PROMPT + '\n\nDocument text (read on-device by text recognition from the ' + (isPdf ? 'scanned pages' : 'photo') + ' — it may contain a misread character here and there):\n' + ocrText, { modelTier: 'default' });
+      return { data: data3, pendingImage: ocrThumb, ocrUsed: true };
+    } catch(ocrErr){
+      if(ocrErr && ocrErr.code) throw ocrErr;
+      var prefix = isPdf ? 'This PDF has no selectable text (it looks like a scanned image with no text layer). ' : '';
+      throw { code: isPdf ? 'no_images_scanned_pdf' : 'no_images', message: prefix + 'This view can\'t send photos to Claude, and on-device text recognition could not run (' + (ocrErr && ocrErr.message ? ocrErr.message : 'unknown error') + '). Try uploading the agreement as a PDF with selectable text, a Word (.docx) file, a saved web page (.html/.mhtml), or a plain text file instead.' };
+    }
+  }
+
+  function describeExtractError(err){
+    var code = err && err.code;
+    if(code === 'no_sample' || code === 'not_granted') return 'Auto-extract needs your permission to use your Claude account, and either wasn\'t granted or isn\'t available in this view. Try again, or reload the page and allow it when asked.';
+    if(code === 'no_images_scanned_pdf') return (err && err.message && /text recognition/.test(err.message)) ? err.message : 'This PDF has no selectable text (it looks like a scanned image with no text layer), and this view can\'t send photos to Claude either. Try a PDF with selectable text, a Word (.docx) file, a saved web page (.html/.mhtml), or a plain text file instead.';
+    if(code === 'no_images' || code === 'images_unavailable') return (err && err.message && /text recognition/.test(err.message)) ? err.message : 'This view can\'t send photos to Claude for reading — try uploading the agreement as a PDF with selectable text, a Word (.docx) file, a saved web page (.html/.mhtml), or a plain text file instead.';
+    if(code === 'ocr_empty') return err.message || 'On-device text recognition could not find readable text in this file.';
+    if(code === 'text_extract_failed') return err.message || 'Could not read this file — it may be corrupted or not the format its name suggests.';
+    if(code === 'text_extract_empty') return 'No readable text was found in this file — if it\'s a scanned image saved as a web page or Word file, try uploading it as a PDF or photo instead.';
+    if(code === 'rate_limited') return 'Too many requests right now — please try again shortly.';
+    if(code === 'image_rejected') return 'That file couldn\'t be read as a document or photo — try a different file.';
+    if(code === 'pdf_lib_unavailable') return 'The PDF reader failed to load — please try again.';
+    if(code === 'invalid_json') return 'Could not make sense of what was read from this document — try a clearer scan.';
+    return (err && err.message) || 'Something went wrong reading this document — please try again.';
+  }
+
+  // ---------- upload modal ----------
+  function openUploadModal(file, presetCompanyId, presetCounterpartyId){
+    var fname = (file.name || '').toLowerCase();
+    var isXlsxTemplate = /\.xlsx$/i.test(fname) ||
+      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    // This hosted (non-Claude) build has no AI/OCR reading available at
+    // all — only the no-AI Excel template path works, so a non-.xlsx file
+    // is redirected here rather than left to fail against a missing
+    // capability with a confusing error.
+    if(localMode && !isXlsxTemplate){
+      modalState = {
+        stage: 'error',
+        presetCompanyId: presetCompanyId || null,
+        presetCounterpartyId: presetCounterpartyId || null,
+        error: 'This hosted copy of Lease Ledger has no AI reading available — download the blank Excel template, fill it in, and upload that instead, or enter the lease details by hand.'
+      };
+      renderModal();
+      return;
+    }
+    modalState = { stage:'reading', file:file, presetCompanyId: presetCompanyId||null, presetCounterpartyId: presetCounterpartyId||null, localOnly: isXlsxTemplate };
+    renderModal();
+
+    var extractPromise = isXlsxTemplate
+      ? extractFromXlsxTemplate(file)
+      : extractFromFile(file).then(function(res){
+          return { leaseData: res.data, pendingImage: res.pendingImage, ocrUsed: res.ocrUsed };
+        });
+
+    extractPromise.then(function(res){
+      if(!modalState) return;
+      if(isXlsxTemplate){
+        // res is an array of one entry per filled-in lease column. A single
+        // filled column behaves exactly like today's single-lease upload;
+        // more than one column triggers a bulk create.
+        if(res.length > 1){
+          processBulkLeaseEntries(res, modalState.presetCompanyId, modalState.presetCounterpartyId);
+          return;
+        }
+        res = res[0];
+      }
+      modalState.data = normalizeExtracted(res.leaseData);
+      modalState.pendingImage = res.pendingImage || null;
+      modalState.ocrUsed = !!res.ocrUsed;
+      if(!modalState.presetCompanyId && res.companyName && res.counterpartyName){
+        // The template names the company/counterparty explicitly — no need
+        // to guess from lessor/lessee the way an auto-read document does.
+        modalState.companyName = res.companyName;
+        modalState.counterpartyName = res.counterpartyName;
+        modalState.stage = 'confirm';
+      } else {
+        modalState.stage = (modalState.presetCompanyId && modalState.presetCounterpartyId) ? 'confirm' : 'mapping';
+      }
+      renderModal();
+    }).catch(function(err){
+      if(!modalState) return;
+      modalState.stage = 'error';
+      modalState.error = isXlsxTemplate ? ((err && err.message) || 'Could not read this spreadsheet.') : describeExtractError(err);
+      renderModal();
+      if(!isXlsxTemplate) tryGenerateThumbnail(file);
+    });
+  }
+
+  // Creates one lease per filled-in column of a multi-lease template
+  // upload. Each column stands entirely on its own: if a preset
+  // company/counterparty was supplied (a per-counterparty "Upload & add
+  // lease" button), every valid column is filed under it; otherwise each
+  // column names its own company and counterparty, so one file can mix
+  // leases across several companies. Columns missing something required
+  // are skipped (not rejected outright) and explained in the results box.
+  async function processBulkLeaseEntries(entries, presetCompanyId, presetCounterpartyId){
+    if(!modalState) return;
+    var succeeded = [], skipped = [];
+    var lastCompanyId = null, lastCounterpartyId = null;
+
+    for(var i = 0; i < entries.length; i++){
+      var entry = entries[i];
+      var label = entry.rowLabel;
+      try{
+        var data = normalizeExtracted(entry.leaseData);
+        var termMonths = (data.commencementDate && data.endDate) ? monthsBetween(data.commencementDate, data.endDate) : 0;
+        var rentNum = firstNumber(data.monthlyRent);
+        var rateNum = firstNumber(data.discountRate);
+        var missing = [];
+        if(!data.commencementDate) missing.push('commencement date');
+        if(!data.endDate) missing.push('end date');
+        if((!termMonths || termMonths <= 0) && data.commencementDate && data.endDate) missing.push('a valid lease term (end date must be after commencement date)');
+        if(!rentNum) missing.push('base monthly rent');
+        if(rateNum === null || rateNum === undefined || isNaN(rateNum) || rateNum < 0) missing.push('discount / interest rate');
+        var companyName = null, counterpartyName = null, companyId, counterpartyId;
+        if(presetCompanyId){
+          companyId = presetCompanyId; counterpartyId = presetCounterpartyId;
+        } else {
+          companyName = entry.companyName; counterpartyName = entry.counterpartyName;
+          if(!companyName) missing.push('company name');
+          if(!counterpartyName) missing.push('counterparty name');
+        }
+        if(missing.length){
+          skipped.push({ label: label, reason: 'missing ' + missing.join(', ') });
+          continue;
+        }
+        if(!presetCompanyId){
+          companyId = await findOrCreateCompany(companyName);
+          counterpartyId = await findOrCreateCounterparty(companyId, counterpartyName);
+        }
+        var totalLeaseValue = Math.round(rentNum * termMonths);
+        var leaseDoc = {
+          leaseName: data.leaseTitle || (data.premises ? ('Lease — ' + data.premises) : ((data.lessorName && data.lesseeName) ? (data.lessorName + ' / ' + data.lesseeName) : label)),
+          startDate: data.commencementDate, endDate: data.endDate,
+          discountRate: rateNum, totalLeaseValue: totalLeaseValue,
+          status: 'recognized', derecognitionDate: null,
+          contractImage: null, contractImageName: null,
+          lessorName: data.lessorName || null, lesseeName: data.lesseeName || null, premises: data.premises || null,
+          monthlyRent: data.monthlyRent || null, maintenanceCharge: data.maintenanceCharge || null,
+          securityDeposit: data.securityDeposit || null, variableRentNote: data.variableRentNote || null,
+          paymentDueNote: data.paymentDueNote || null, stampDutyAmount: data.stampDutyAmount || null,
+          stampCertificateNo: data.stampCertificateNo || null,
+          createdAt: new Date().toISOString()
+        };
+        var newLeaseId = await addLeaseDoc(companyId, counterpartyId, leaseDoc);
+        openLeaseIds[newLeaseId] = true;
+        lastCompanyId = companyId; lastCounterpartyId = counterpartyId;
+        succeeded.push({ label: label, leaseName: leaseDoc.leaseName, companyName: presetCompanyId ? null : companyName });
+      } catch(e){
+        skipped.push({ label: label, reason: (e && (e.message || e.code)) || 'could not be saved' });
+      }
+    }
+
+    if(!modalState) return;
+    modalState.stage = 'bulkResult';
+    modalState.bulkSucceeded = succeeded;
+    modalState.bulkSkipped = skipped;
+    renderModal();
+    if(lastCompanyId) navigateTo(lastCompanyId, lastCounterpartyId);
+    toast(succeeded.length + ' of ' + entries.length + ' lease' + (entries.length === 1 ? '' : 's') + ' recognized' + (skipped.length ? (', ' + skipped.length + ' skipped') : ''));
+  }
+
+  function closeModal(){ modalState = null; renderModal(); }
+
+  function renderModal(){
+    var overlay = document.getElementById('uploadModal');
+    if(!modalState){ overlay.classList.remove('open'); overlay.innerHTML=''; return; }
+    overlay.classList.add('open');
+    var box = '';
+    if(modalState.stage === 'reading'){
+      box = modalState.localOnly
+        ? '<div class="modal-box"><h3>Reading spreadsheet&hellip;</h3><p class="hint">Reading the filled-in fields directly from the file — no AI reading or OCR involved.</p></div>'
+        : '<div class="modal-box"><h3>Reading document&hellip;</h3><p class="hint">Extracting details with your Claude account — this can take up to a minute for a multi-page PDF.</p></div>';
+    } else if(modalState.stage === 'error'){
+      box = '<div class="modal-box"><h3>Couldn\'t read this document</h3><p class="hint">' + esc(modalState.error) + '</p><div class="modal-actions"><button class="btn secondary" data-modal-cancel>Close</button><button class="btn" data-enter-manually>Enter details manually</button></div></div>';
+    } else if(modalState.stage === 'mapping'){
+      box = renderMappingBox(modalState.data);
+    } else if(modalState.stage === 'confirm'){
+      box = renderConfirmBox(modalState);
+    } else if(modalState.stage === 'manualParty'){
+      box = renderManualPartyBox();
+    } else if(modalState.stage === 'manualLease'){
+      box = renderManualLeaseBox();
+    } else if(modalState.stage === 'bulkResult'){
+      box = renderBulkResultBox(modalState);
+    }
+    overlay.innerHTML = box;
+    wireModalEvents();
+  }
+
+  function renderBulkResultBox(state){
+    var succeeded = state.bulkSucceeded || [], skipped = state.bulkSkipped || [];
+    var total = succeeded.length + skipped.length;
+    var html = '<div class="modal-box wide"><h3>Bulk upload results</h3>' +
+      '<p class="hint">' + succeeded.length + ' of ' + total + ' lease column' + (total === 1 ? '' : 's') + ' in this file ' + (total === 1 ? 'was' : 'were') + ' recognized.</p>';
+    if(succeeded.length){
+      html += '<div class="subhead" style="margin-top:10px;">Recognized</div>' +
+        '<div class="particulars-grid" style="margin-bottom:16px;">' + succeeded.map(function(s){
+          return '<div class="row"><div class="k">' + esc(s.label) + '</div><div class="v">' + esc(s.leaseName) + (s.companyName ? ' — ' + esc(s.companyName) : '') + '</div></div>';
+        }).join('') + '</div>';
+    }
+    if(skipped.length){
+      html += '<div class="subhead" style="margin-top:10px;">Skipped</div>' +
+        '<div class="particulars-grid" style="margin-bottom:16px;">' + skipped.map(function(s){
+          return '<div class="row"><div class="k">' + esc(s.label) + '</div><div class="v" style="color:var(--bad);">' + esc(s.reason) + '</div></div>';
+        }).join('') + '</div>';
+    }
+    html += '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Close</button></div></div>';
+    return html;
+  }
+
+  function renderMappingBox(data){
+    var lessor = data.lessorName, lessee = data.lesseeName;
+    if(lessor && lessee){
+      return '<div class="modal-box"><h3>Who is the company, who is the counterparty?</h3>' +
+        '<p class="hint">Found two parties in this agreement. Whichever you pick as the Company appears in the sidebar; the other becomes the Counterparty listed under it.</p>' +
+        '<div class="map-options">' +
+          '<button class="map-option" data-company="' + esc(lessee) + '" data-counterparty="' + esc(lessor) + '"><span class="mlabel">Company</span><span class="mname">' + esc(lessee) + '</span><span class="mlabel" style="margin-top:8px;">Counterparty</span><span class="mname">' + esc(lessor) + '</span></button>' +
+          '<button class="map-option" data-company="' + esc(lessor) + '" data-counterparty="' + esc(lessee) + '"><span class="mlabel">Company</span><span class="mname">' + esc(lessor) + '</span><span class="mlabel" style="margin-top:8px;">Counterparty</span><span class="mname">' + esc(lessee) + '</span></button>' +
+        '</div>' +
+        '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Cancel</button></div></div>';
+    }
+    return '<div class="modal-box"><h3>Name the company and counterparty</h3>' +
+      '<p class="hint">Couldn\'t clearly read both party names from this document — enter them once and this pair will be remembered for next time.</p>' +
+      '<div class="field" style="margin-bottom:12px;"><label for="mapCompanyName">Company (appears in the sidebar)</label><input type="text" id="mapCompanyName" value="' + esc(lessee||lessor||'') + '" /></div>' +
+      '<div class="field"><label for="mapCounterpartyName">Counterparty</label><input type="text" id="mapCounterpartyName" /></div>' +
+      '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Cancel</button><button class="btn" data-map-confirm>Continue</button></div></div>';
+  }
+
+  function mfield(id, label, type, placeholder, required, value){
+    if(type === 'date'){
+      return '<div class="field" style="margin-bottom:12px;"><label>' + esc(label) + (required?' *':'') + '</label>' +
+        '<div style="display:flex; gap:8px;">' + buildDateSelectsHtml(value, 'm_' + id) + '</div></div>';
+    }
+    return '<div class="field" style="margin-bottom:12px;"><label for="m_' + id + '">' + esc(label) + (required?' *':'') + '</label>' +
+      '<input type="' + type + '" id="m_' + id + '"' + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') +
+      (type==='number' ? ' step="0.01" min="0"' : '') +
+      (value !== undefined && value !== null ? ' value="' + esc(String(value)) + '"' : '') + ' /></div>';
+  }
+
+  function renderManualPartyBox(){
+    return '<div class="modal-box"><h3>Name the company and counterparty</h3>' +
+      '<p class="hint">Couldn\'t auto-read this document, so name the two parties once here.</p>' +
+      mfield('companyName', 'Company (appears in the sidebar)', 'text', 'e.g. PDKA', true) +
+      mfield('counterpartyName', 'Counterparty', 'text', 'e.g. Canvera Digital Technologies Pvt Ltd', true) +
+      '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Cancel</button><button class="btn" data-manual-party-continue>Continue</button></div></div>';
+  }
+
+  function renderManualLeaseBox(){
+    var companyLabel, counterpartyLabel;
+    if(modalState.presetCompanyId){
+      var c = companies.find(function(x){ return x.id===modalState.presetCompanyId; });
+      var cp = (counterparties[modalState.presetCompanyId]||[]).find(function(x){ return x.id===modalState.presetCounterpartyId; });
+      companyLabel = c ? c.name : ''; counterpartyLabel = cp ? cp.name : '';
+    } else {
+      companyLabel = modalState.companyName; counterpartyLabel = modalState.counterpartyName;
+    }
+    var d = (modalState && modalState.data) ? modalState.data : {};
+    var prefillTotal = null;
+    if(d.commencementDate && d.endDate && d.monthlyRent){
+      var tm = monthsBetween(d.commencementDate, d.endDate);
+      var rn = firstNumber(d.monthlyRent);
+      if(tm && rn) prefillTotal = Math.round(rn * tm);
+    }
+    var html = '<div class="modal-box wide"><h3>Enter lease details</h3>' +
+      '<p class="hint">' + esc(companyLabel) + ' &#8646; ' + esc(counterpartyLabel) + '. Fill in what the agreement says — only the fields marked * are required.</p>';
+    if(modalState && modalState.data){
+      html += '<div class="particulars-note" style="margin-bottom:14px;">Fields already read from the document have been filled in below — please fill in the rest and check everything before saving.</div>';
+    }
+    html += '<div class="form-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:6px;">' +
+      mfield('leaseName', 'Asset / description', 'text', 'e.g. Bommanahalli office premises', true, d.leaseTitle || d.premises || null) +
+      mfield('startDate', 'Commencement date', 'date', null, true, d.commencementDate || null) +
+      mfield('endDate', 'End of lease term', 'date', null, true, d.endDate || null) +
+      mfield('discountRate', 'Discount / interest rate (% p.a.)', 'number', 'e.g. 9.5', true) +
+      mfield('totalLeaseValue', 'Total lease value (₹, all payments)', 'number', 'e.g. 12384000', true, prefillTotal) +
+      '</div>';
+    html += '<div class="subhead" style="margin-top:8px;">Agreement particulars (optional, for the audit file)</div>';
+    html += '<div class="form-grid particulars" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px;">' +
+      mfield('lessorName', 'Lessor / landlord', 'text', null, false, d.lessorName || null) +
+      mfield('lesseeName', 'Lessee', 'text', null, false, d.lesseeName || null) +
+      mfield('monthlyRent', 'Base monthly rent, excl. GST (₹)', 'number', null, false, d.monthlyRent || null) +
+      mfield('maintenanceCharge', 'Monthly maintenance / CAM, excl. GST (₹)', 'number', null, false, d.maintenanceCharge || null) +
+      mfield('securityDeposit', 'Security deposit (₹)', 'number', null, false, d.securityDeposit || null) +
+      mfield('paymentDueNote', 'Payment due', 'text', 'e.g. 1st of every month', false, d.paymentDueNote || null) +
+      mfield('stampDutyAmount', 'Stamp duty paid (₹)', 'number', null, false, d.stampDutyAmount || null) +
+      mfield('stampCertificateNo', 'e-Stamp certificate no.', 'text', null, false, d.stampCertificateNo || null) +
+      '</div>';
+    html += '<div class="field" style="margin:4px 0 14px;"><label for="m_premises">Premises / property description</label><input type="text" id="m_premises"' + (d.premises ? ' value="' + esc(d.premises) + '"' : '') + ' /></div>';
+    html += '<div class="field" style="margin-bottom:14px;"><label for="m_variableRentNote">Variable / escalation clause, if any</label><input type="text" id="m_variableRentNote"' + (d.variableRentNote ? ' value="' + esc(d.variableRentNote) + '"' : '') + ' /></div>';
+    html += '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Cancel</button><button class="btn" data-manual-save>Recognize lease</button></div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderConfirmBox(state){
+    var data = state.data;
+    var companyLabel, counterpartyLabel;
+    if(state.presetCompanyId){
+      var c = companies.find(function(x){ return x.id===state.presetCompanyId; });
+      var cp = (counterparties[state.presetCompanyId]||[]).find(function(x){ return x.id===state.presetCounterpartyId; });
+      companyLabel = c ? c.name : '';
+      counterpartyLabel = cp ? cp.name : '';
+    } else {
+      companyLabel = state.companyName;
+      counterpartyLabel = state.counterpartyName;
+    }
+
+    var termMonths = (data.commencementDate && data.endDate) ? monthsBetween(data.commencementDate, data.endDate) : 0;
+    var canSave = !!(data.commencementDate && data.endDate && data.monthlyRent && termMonths > 0);
+    var totalLeaseValue = canSave ? Math.round(Number(data.monthlyRent) * termMonths) : null;
+
+    var rows = [
+      ['Company', companyLabel], ['Counterparty', counterpartyLabel],
+      ['Lessor / landlord', data.lessorName], ['Lessee', data.lesseeName],
+      ['Premises', data.premises],
+      ['Commencement date', data.commencementDate ? fmtDate(data.commencementDate) : null],
+      ['End date', data.endDate ? fmtDate(data.endDate) : null],
+      ['Lease term', termMonths ? termMonths + ' months' : null],
+      ['Base monthly rent (excl. GST)', data.monthlyRent ? fmtINR(Number(data.monthlyRent)) : null],
+      ['Computed total lease value', totalLeaseValue ? fmtINR(totalLeaseValue) : null],
+      ['Monthly maintenance / CAM (excl. GST)', data.maintenanceCharge ? fmtINR(Number(data.maintenanceCharge)) : null],
+      ['Security deposit', data.securityDeposit ? fmtINR(Number(data.securityDeposit)) : null],
+      ['Payment due', data.paymentDueNote],
+      ['Stamp duty paid', data.stampDutyAmount ? fmtINR(Number(data.stampDutyAmount)) : null],
+      ['e-Stamp certificate no.', data.stampCertificateNo]
+    ].filter(function(r){ return r[1]; });
+
+    var html = '<div class="modal-box wide"><h3>Confirm lease details</h3>' +
+      '<p class="hint">Everything below was read from the document. Nothing is saved until you click Recognize lease.</p>' +
+      '<div class="particulars-grid" style="margin-bottom:16px;">' + rows.map(function(r){ return '<div class="row"><div class="k">' + esc(r[0]) + '</div><div class="v num">' + esc(r[1]) + '</div></div>'; }).join('') + '</div>';
+
+    if(modalState && modalState.ocrUsed){
+      html += '<div class="particulars-note" style="margin-bottom:14px;">Read using on-device text recognition (this view can\'t send photos directly to Claude). Recognition can misread a character here and there — please check the figures above against the document before saving.</div>';
+    }
+    if(data.variableRentNote){
+      html += '<div class="particulars-note" style="margin-bottom:14px;">Variable/escalation clause: ' + esc(data.variableRentNote) + ' — excluded from the computed total lease value; only the fixed/base rent is capitalised under Ind AS 116.</div>';
+    }
+    if(!canSave){
+      html += '<div class="particulars-note" style="color:var(--bad); margin-bottom:14px;">Could not clearly find the commencement date, end date and/or monthly rent in this document, so the lease liability can\'t be computed automatically. Everything already read above has been kept — click "Fill in the missing details" to complete the rest yourself.</div>';
+    }
+    html += '<div class="field" style="max-width:260px; margin-bottom:6px;"><label for="discountRateInput">Discount / interest rate (% p.a.)</label><input type="number" step="0.01" min="0" id="discountRateInput" placeholder="e.g. 9.5"' + (canSave?'':' disabled') + (data.discountRate ? ' value="' + esc(data.discountRate) + '"' : '') + ' /><span class="hint">Your incremental borrowing rate — never stated in the agreement, so this is the one figure you enter yourself.</span></div>';
+    html += '<div class="modal-actions"><button class="btn secondary" data-modal-cancel>Cancel</button>' +
+      (canSave ? '<button class="btn" data-confirm-save>Recognize lease</button>' : '<button class="btn" data-fill-missing>Fill in the missing details</button>') +
+      '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function wireModalEvents(){
+    var overlay = document.getElementById('uploadModal');
+    Array.prototype.forEach.call(overlay.querySelectorAll('[data-modal-cancel]'), function(el){ el.addEventListener('click', closeModal); });
+
+    Array.prototype.forEach.call(overlay.querySelectorAll('.map-option'), function(el){
+      el.addEventListener('click', function(){
+        modalState.companyName = el.getAttribute('data-company');
+        modalState.counterpartyName = el.getAttribute('data-counterparty');
+        modalState.stage = 'confirm';
+        renderModal();
+      });
+    });
+
+    var mapConfirm = overlay.querySelector('[data-map-confirm]');
+    if(mapConfirm) mapConfirm.addEventListener('click', function(){
+      var cName = (document.getElementById('mapCompanyName').value||'').trim();
+      var pName = (document.getElementById('mapCounterpartyName').value||'').trim();
+      if(!cName || !pName){ showAlert('Please name both the company and the counterparty.'); return; }
+      modalState.companyName = cName;
+      modalState.counterpartyName = pName;
+      modalState.stage = 'confirm';
+      renderModal();
+    });
+
+    var saveBtn = overlay.querySelector('[data-confirm-save]');
+    if(saveBtn) saveBtn.addEventListener('click', function(){ confirmSaveLease(saveBtn); });
+
+    var fillMissing = overlay.querySelector('[data-fill-missing]');
+    if(fillMissing) fillMissing.addEventListener('click', function(){
+      modalState.stage = 'manualLease';
+      renderModal();
+    });
+
+    var enterManually = overlay.querySelector('[data-enter-manually]');
+    if(enterManually) enterManually.addEventListener('click', function(){
+      modalState.stage = (modalState.presetCompanyId && modalState.presetCounterpartyId) ? 'manualLease' : 'manualParty';
+      renderModal();
+    });
+
+    var manualPartyContinue = overlay.querySelector('[data-manual-party-continue]');
+    if(manualPartyContinue) manualPartyContinue.addEventListener('click', function(){
+      var cName = (document.getElementById('m_companyName').value||'').trim();
+      var pName = (document.getElementById('m_counterpartyName').value||'').trim();
+      if(!cName || !pName){ showAlert('Please name both the company and the counterparty.'); return; }
+      modalState.companyName = cName;
+      modalState.counterpartyName = pName;
+      modalState.stage = 'manualLease';
+      renderModal();
+    });
+
+    var manualSave = overlay.querySelector('[data-manual-save]');
+    if(manualSave) manualSave.addEventListener('click', function(){ confirmManualSave(manualSave); });
+  }
+
+  function tryGenerateThumbnail(file){
+    var isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name||'');
+    if(isPdf){
+      Promise.resolve().then(function(){
+        ensurePdfWorker();
+        return file.arrayBuffer();
+      }).then(function(buf){ return pdfjsLib.getDocument({data:buf}).promise; })
+        .then(function(pdf){ return renderPdfPage(pdf, 1, 1200); })
+        .then(function(canvas){
+          compressToDataUrl(canvas, canvas.width, canvas.height, function(u){
+            if(u && modalState) modalState.pendingImage = { dataUrl:u, name:file.name };
+          });
+        }).catch(function(){});
+    } else {
+      compressImageFile(file, function(u){
+        if(u && modalState) modalState.pendingImage = { dataUrl:u, name:file.name };
+      });
+    }
+  }
+
+  async function confirmManualSave(btn){
+    var overlay = document.getElementById('uploadModal');
+    var get = function(id){ var el = document.getElementById('m_'+id); return el ? el.value : ''; };
+    var leaseName = get('leaseName').trim();
+    var startPicked = readDateSelects(overlay, 'm_startDate');
+    var endPicked = readDateSelects(overlay, 'm_endDate');
+    var discountRate = get('discountRate');
+    var totalLeaseValue = get('totalLeaseValue');
+    if(!leaseName || !startPicked || !endPicked || discountRate==='' || totalLeaseValue===''){
+      showAlert('Please fill in the asset description, both dates, the discount rate and the total lease value.');
+      return;
+    }
+    if(startPicked.invalid || endPicked.invalid){
+      showAlert('One of the dates entered doesn\'t exist — check the day and month.');
+      return;
+    }
+    var startDate = startPicked.iso, endDate = endPicked.iso;
+    if(new Date(endDate) <= new Date(startDate)){ showAlert('End date must be after the commencement date.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      var num = function(id){ var v = get(id); return v === '' ? null : Number(v); };
+      var txt = function(id){ var v = get(id).trim(); return v === '' ? null : v; };
+      var leaseDoc = {
+        leaseName: leaseName, startDate: startDate, endDate: endDate,
+        discountRate: Number(discountRate), totalLeaseValue: Number(totalLeaseValue),
+        status: 'recognized', derecognitionDate: null,
+        contractImage: modalState.pendingImage ? modalState.pendingImage.dataUrl : null,
+        contractImageName: modalState.pendingImage ? modalState.pendingImage.name : null,
+        lessorName: txt('lessorName'), lesseeName: txt('lesseeName'), premises: txt('premises'),
+        monthlyRent: num('monthlyRent'), maintenanceCharge: num('maintenanceCharge'),
+        securityDeposit: num('securityDeposit'), variableRentNote: txt('variableRentNote'),
+        paymentDueNote: txt('paymentDueNote'), stampDutyAmount: num('stampDutyAmount'),
+        stampCertificateNo: txt('stampCertificateNo'),
+        createdAt: new Date().toISOString()
+      };
+
+      var companyId, counterpartyId;
+      if(modalState.presetCompanyId){
+        companyId = modalState.presetCompanyId; counterpartyId = modalState.presetCounterpartyId;
+      } else {
+        companyId = await findOrCreateCompany(modalState.companyName);
+        counterpartyId = await findOrCreateCounterparty(companyId, modalState.counterpartyName);
+      }
+      var newLeaseId = await addLeaseDoc(companyId, counterpartyId, leaseDoc);
+      openLeaseIds[newLeaseId] = true;
+      navigateTo(companyId, counterpartyId);
+      closeModal();
+      toast('Lease recognized');
+    } catch(e){
+      btn.disabled = false; btn.textContent = 'Recognize lease';
+      showAlert('Could not save this lease: ' + ((e && (e.message || e.code)) || 'unknown error') + '.');
+    }
+  }
+
+  async function confirmSaveLease(btn){
+    var rateEl = document.getElementById('discountRateInput');
+    var rate = rateEl ? Number(rateEl.value) : NaN;
+    if(!rateEl || rateEl.value === '' || isNaN(rate) || rate < 0){
+      showAlert('Enter the discount / interest rate (% per annum) before recognizing this lease.');
+      if(rateEl) rateEl.focus();
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try{
+      var data = modalState.data;
+      var termMonths = monthsBetween(data.commencementDate, data.endDate);
+      var rentNum = firstNumber(data.monthlyRent);
+      if(!rentNum || !termMonths){
+        btn.disabled = false; btn.textContent = 'Recognize lease';
+        showAlert('The monthly rent or the lease dates could not be read as usable values, so the lease liability cannot be computed. Use "Enter details manually" instead.');
+        return;
+      }
+      var totalLeaseValue = Math.round(rentNum * termMonths);
+      var leaseDoc = {
+        leaseName: data.leaseTitle || (data.premises ? ('Lease — ' + data.premises) : ((data.lessorName && data.lesseeName) ? (data.lessorName + ' / ' + data.lesseeName) : 'Lease agreement')),
+        startDate: data.commencementDate, endDate: data.endDate,
+        discountRate: rate, totalLeaseValue: totalLeaseValue,
+        status: 'recognized', derecognitionDate: null,
+        contractImage: modalState.pendingImage ? modalState.pendingImage.dataUrl : null,
+        contractImageName: modalState.pendingImage ? modalState.pendingImage.name : null,
+        lessorName: data.lessorName || null, lesseeName: data.lesseeName || null, premises: data.premises || null,
+        monthlyRent: data.monthlyRent || null, maintenanceCharge: data.maintenanceCharge || null,
+        securityDeposit: data.securityDeposit || null, variableRentNote: data.variableRentNote || null,
+        paymentDueNote: data.paymentDueNote || null, stampDutyAmount: data.stampDutyAmount || null,
+        stampCertificateNo: data.stampCertificateNo || null,
+        createdAt: new Date().toISOString()
+      };
+
+      var companyId, counterpartyId;
+      if(modalState.presetCompanyId){
+        companyId = modalState.presetCompanyId;
+        counterpartyId = modalState.presetCounterpartyId;
+      } else {
+        companyId = await findOrCreateCompany(modalState.companyName);
+        counterpartyId = await findOrCreateCounterparty(companyId, modalState.counterpartyName);
+      }
+      var newLeaseId = await addLeaseDoc(companyId, counterpartyId, leaseDoc);
+      openLeaseIds[newLeaseId] = true;
+      navigateTo(companyId, counterpartyId);
+      closeModal();
+      toast('Lease recognized');
+    } catch(e){
+      btn.disabled = false; btn.textContent = 'Recognize lease';
+      showAlert('Could not save this lease: ' + ((e && (e.message || e.code)) || 'unknown error') + '.');
+    }
+  }
+
+  async function findOrCreateCompany(name){
+    name = name.trim();
+    if(db){
+      var snap = await db.collection('companies').get();
+      var match = snap.docs.find(function(d){ return (d.data().name||'').trim().toLowerCase() === name.toLowerCase(); });
+      if(match) return match.id;
+      var ref = await dbAdd('companies', {name:name});
+      return ref.id;
+    }
+    var m = localStore.companies.find(function(c){ return c.name.trim().toLowerCase() === name.toLowerCase(); });
+    if(m) return m.id;
+    var id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    localStore.companies.push({id:id, name:name});
+    localStore.counterparties[id] = [];
+    syncFromLocal();
+    return id;
+  }
+
+  async function findOrCreateCounterparty(companyId, name){
+    name = name.trim();
+    if(db){
+      var snap = await db.collection('companies/' + companyId + '/counterparties').get();
+      var match = snap.docs.find(function(d){ return (d.data().name||'').trim().toLowerCase() === name.toLowerCase(); });
+      if(match) return match.id;
+      var ref = await dbAdd('companies/' + companyId + '/counterparties', {name:name});
+      return ref.id;
+    }
+    localStore.counterparties[companyId] = localStore.counterparties[companyId] || [];
+    var m = localStore.counterparties[companyId].find(function(c){ return c.name.trim().toLowerCase() === name.toLowerCase(); });
+    if(m) return m.id;
+    var id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    localStore.counterparties[companyId].push({id:id, name:name});
+    localStore.leases[leaseKey(companyId, id)] = [];
+    syncFromLocal();
+    return id;
+  }
+
+  async function addLeaseDoc(companyId, counterpartyId, data){
+    if(db){
+      var ref = await dbAdd('companies/' + companyId + '/counterparties/' + counterpartyId + '/leases', data);
+      return ref.id;
+    }
+    var id = 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    data.id = id;
+    var key = leaseKey(companyId, counterpartyId);
+    localStore.leases[key] = localStore.leases[key] || [];
+    localStore.leases[key].push(data);
+    syncFromLocal();
+    return id;
+  }
+
+  function navigateTo(companyId, counterpartyId){
+    selectedCompanyId = companyId;
+    selectedCounterpartyId = counterpartyId;
+    renderSidebar();
+    subscribeCounterparties(companyId);
+    subscribeLeases(companyId, counterpartyId);
+    renderMain();
+  }
+
+  // ---------- rendering ----------
+  function renderSidebar(){
+    var list = document.getElementById('companyList');
+    if(companies.length === 0){
+      list.innerHTML = '<div style="color:var(--muted); font-size:12.5px; padding:8px 2px;">No companies yet — upload an agreement above, or add one below.</div>';
+      return;
+    }
+    list.innerHTML = companies.map(function(c){
+      var cps = counterparties[c.id] || [];
+      return '<div class="company-item ' + (c.id===selectedCompanyId?'active':'') + '" data-id="' + esc(c.id) + '">' +
+        '<span class="cname">' + esc(c.name) + '</span>' +
+        '<span class="ccount">' + (cps.length || '') + '</span>' +
+        '</div>';
+    }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('.company-item'), function(el){
+      el.addEventListener('click', function(){ selectCompany(el.getAttribute('data-id')); });
+    });
+  }
+
+  // A rendering exception must never leave the page silently stuck (a click
+  // that appears to "do nothing") — surface it instead, so what actually
+  // went wrong is visible rather than swallowed by the browser console.
+  function renderMain(){
+    try{
+      renderMainInner();
+    } catch(renderErr){
+      showAlert('Something went wrong updating the screen: ' +
+        (renderErr && renderErr.message ? renderErr.message : String(renderErr)) +
+        '. Your change may not have been saved — please check and try again.');
+    }
+  }
+  function renderMainInner(){
+    var main = document.getElementById('main');
+    var company = companies.find(function(c){ return c.id === selectedCompanyId; });
+    if(!company){
+      main.innerHTML = localMode
+        ? ('<div class="empty-state"><h2>Select a company, or fill in a lease</h2>' +
+          '<p>This hosted copy has no AI reading. Fill in the blank Excel template (or add a company below and enter a lease by hand) and the company and counterparty are set up for you automatically.</p>' +
+          '<ol class="steps">' +
+            '<li><span class="step-n">1</span><b>Fill in the template</b>Download the blank Excel template and type in the agreement details.</li>' +
+            '<li><span class="step-n">2</span><b>Upload it back</b>Confirm the parties, dates and rent, then add the discount rate.</li>' +
+            '<li><span class="step-n">3</span><b>Get the schedule</b>Year-wise liability and ROU asset, ready for Excel.</li>' +
+          '</ol></div>')
+        : ('<div class="empty-state"><h2>Select a company, or upload an agreement</h2>' +
+          '<p>Upload a signed lease agreement and the company and counterparty are set up for you automatically. Or pick an existing company on the left to browse what is already recorded.</p>' +
+          '<ol class="steps">' +
+            '<li><span class="step-n">1</span><b>Upload the agreement</b>A PDF, Word file, saved web page (.html/.mhtml), or a clear photo of the signed lease.</li>' +
+            '<li><span class="step-n">2</span><b>Check what was read</b>Confirm the parties, dates and rent, then add the discount rate.</li>' +
+            '<li><span class="step-n">3</span><b>Get the schedule</b>Year-wise liability and ROU asset, ready for Excel.</li>' +
+          '</ol></div>');
+      return;
+    }
+
+    var cps = counterparties[company.id] || [];
+    var counterparty = cps.find(function(p){ return p.id === selectedCounterpartyId; });
+
+    var html = '';
+    html += '<div class="company-header">' +
+      '<div><h2>' + esc(company.name) + '</h2>' +
+      '<div class="sub">' + cps.length + ' counterpart' + (cps.length===1?'y':'ies') + ' &middot; select one below to view its lease agreements</div></div>' +
+      '<button class="btn secondary" id="deleteCompanyBtn">Remove company</button>' +
+      '</div>';
+
+    html += '<div class="counterparty-bar">' +
+      '<div class="field"><label for="cpSelect">Counterparty (the other party on the lease)</label>' +
+      '<select id="cpSelect"><option value="">— choose a counterparty —</option>' +
+      cps.map(function(p){ return '<option value="' + esc(p.id) + '"' + (p.id===selectedCounterpartyId?' selected':'') + '>' + esc(p.name) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="or">or</div>' +
+      '<div class="new-cp">' +
+        '<div class="field"><label for="newCpName">Add new counterparty</label><input type="text" id="newCpName" placeholder="e.g. Rajesh Textiles Pvt Ltd" /></div>' +
+        '<button class="btn secondary" id="addCpBtn">Add &amp; select</button>' +
+      '</div>' +
+      '</div>';
+
+    if(!counterparty){
+      html += '<div class="empty-state" style="padding:20px 0;"><h2 style="font-size:18px;">Choose a counterparty</h2>' +
+        '<p>Pick an existing counterparty above, or add a new one, to record and view its lease agreements with ' + esc(company.name) + '. Or just upload the next agreement — it\'ll find or create the right counterparty on its own.</p></div>';
+      main.innerHTML = html;
+      wireMainEvents(company, null);
+      return;
+    }
+
+    var key = leaseKey(company.id, counterparty.id);
+    var list = leases[key] || [];
+    var activeCount = list.filter(function(l){ return l.status !== 'derecognized'; }).length;
+
+    html += '<div class="agreement-title"><h3>' + esc(company.name) + '</h3><span class="arrow">&#8646;</span><h3>' + esc(counterparty.name) + '</h3></div>';
+
+    html += '<div class="add-lease-bar">' +
+      (localMode
+        ? ('<div><div class="t">Add a lease agreement</div><div class="h">This hosted copy has no AI reading. Fill in the <button type="button" id="cpTemplateBtn" class="btn ghost" style="padding:0; font-size:inherit; text-decoration:underline; display:inline;">blank Excel template</button> and upload it, or enter one by hand.</div></div>' +
+           '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+             '<label class="btn" for="cpFileInput">Upload filled-in template</label>' +
+             '<button type="button" class="btn secondary" id="cpManualBtn">Enter details manually</button>' +
+             '<input type="file" id="cpFileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none;" />' +
+           '</div>')
+        : ('<div><div class="t">Add a lease agreement</div><div class="h">Upload the signed agreement — parties, dates, rent and audit particulars are read automatically; only the discount rate is entered by hand. Or fill in the <button type="button" id="cpTemplateBtn" class="btn ghost" style="padding:0; font-size:inherit; text-decoration:underline; display:inline;">blank Excel template</button> yourself — no scan or AI reading needed.</div></div>' +
+           '<div><label class="btn" for="cpFileInput">Upload &amp; add lease</label>' +
+           '<input type="file" id="cpFileInput" accept="application/pdf,image/*,.html,.htm,.mht,.mhtml,.txt,.docx,text/html,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,message/rfc822,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none;" /></div>')
+      ) +
+      '</div>';
+
+    html += '<div class="section-title"><h3>Lease agreements — ' + esc(counterparty.name) + '</h3></div>';
+    var badCount = list.filter(function(x){ return !computeLease(x).measurable; }).length;
+    html += '<div class="sub" style="margin-top:-8px; margin-bottom:14px; color:var(--muted); font-size:12.5px;">' +
+      list.length + ' recorded &middot; ' + activeCount + ' currently recognized' +
+      (badCount ? ' &middot; <span style="color:var(--bad); font-weight:600;">' + badCount + ' not measurable</span>' : '') +
+      '</div>';
+
+    var broken = brokenLeases[key] || [];
+    if(broken.length){
+      html += '<div class="particulars-note" style="color:var(--bad); margin-bottom:16px; display:flex; flex-direction:column; gap:10px;">' +
+        '<div>' + broken.length + ' lease record' + (broken.length===1?'':'s') + ' here ' + (broken.length===1?'was':'were') + ' created by an earlier version of this app without a usable internal ID, so ' +
+        (broken.length===1?'it':'they') + ' can\'t be updated, derecognized or deleted directly. Nothing is lost — click Repair to recreate ' +
+        (broken.length===1?'it':'each') + ' as a normal, editable lease.</div>' +
+        broken.map(function(b, i){
+          return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px;">' +
+            '<span style="color:var(--ink); font-size:12.5px;">' + esc(b.data.leaseName || 'Untitled lease') + '</span>' +
+            '<button class="btn secondary" data-repair-broken="' + i + '" style="padding:5px 11px; font-size:12px;">Repair</button></div>';
+        }).join('') +
+        '</div>';
+    }
+
+    if(list.length === 0){
+      html += '<div style="color:var(--muted); font-size:13px; padding:8px 2px;">No leases recorded with ' + esc(counterparty.name) + ' yet.</div>';
+    } else {
+      html += '<div class="lease-list">' + list.map(renderLeaseCard).join('') + '</div>';
+    }
+
+    html += '<div class="foot-note">Lease liability is measured as the present value of the total lease payments, discounted at the rate you enter; the right-of-use asset is recognized at the same amount on commencement and depreciated straight-line over the lease term, per Ind AS 116. The schedule is grouped year-wise (1 April – 31 March), stubbed to the actual commencement and end dates. Marking a lease derecognized computes the gain/(loss) as the remaining lease liability less the right-of-use asset\'s carrying amount at that date.</div>';
+
+    main.innerHTML = html;
+    lastMainKey = leaseKey(company.id, counterparty.id);
+
+    // Bind each lease object directly onto its rendered card. Exporting then
+    // reads the object off the element instead of looking it up by id, so it
+    // cannot fail because of a stale or empty index.
+    currentLeaseList = list;
+    Array.prototype.forEach.call(main.querySelectorAll('.lease-card'), function(card, idx){
+      var id = card.getAttribute('data-id');
+      var found = null;
+      for(var i=0; i<list.length; i++){ if(list[i] && list[i].id === id){ found = list[i]; break; } }
+      card.__lease = found || list[idx] || null;   // positional match as a backstop
+    });
+
+    wireMainEvents(company, counterparty);
+  }
+
+  function particularsBlock(l){
+    var rows = [
+      ['Lessor / landlord', l.lessorName],
+      ['Lessee / counterparty', l.lesseeName],
+      ['Premises', l.premises],
+      ['Base monthly rent', l.monthlyRent ? fmtINR(Number(l.monthlyRent)) : null],
+      ['Monthly maintenance / CAM', l.maintenanceCharge ? fmtINR(Number(l.maintenanceCharge)) : null],
+      ['Security deposit', l.securityDeposit ? fmtINR(Number(l.securityDeposit)) : null],
+      ['Payment due', l.paymentDueNote],
+      ['Stamp duty paid', l.stampDutyAmount ? fmtINR(Number(l.stampDutyAmount)) : null],
+      ['e-Stamp certificate no.', l.stampCertificateNo]
+    ].filter(function(r){ return r[1]; });
+
+    if(rows.length === 0 && !l.variableRentNote) return '';
+
+    var html = '<div class="particulars-block"><div class="ptitle">Agreement particulars</div><div class="particulars-grid">';
+    rows.forEach(function(r){ html += '<div class="row"><div class="k">' + esc(r[0]) + '</div><div class="v num">' + esc(r[1]) + '</div></div>'; });
+    html += '</div>';
+    if(l.variableRentNote){
+      html += '<div class="particulars-note">Variable/escalation clause: ' + esc(l.variableRentNote) + ' — excluded from the lease liability above; the fixed/base rent only is capitalised.</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // Every lease that has ever been rendered stays reachable by id, so the
+  // Excel export can never fail to find a row the user can see.
+  var leasesById = {};
+  var lastMainKey = null;
+  var currentLeaseList = [];
+
+  function renderLeaseCard(l){
+    leasesById[l.id] = l;
+    var calc = computeLease(l);
+    var open = !!openLeaseIds[l.id];
+    var statusLabel = l.status === 'derecognized' ? 'Derecognized' : 'Recognized';
+
+    // An unmeasurable lease must never look like a normal one.
+    var money = function(v){ return calc.measurable ? fmtINR(v) : '&mdash;'; };
+    var warnHtml = '';
+    if(!calc.measurable){
+      warnHtml = '<div class="lease-warn"><b>Not measurable &mdash; this lease is not counted.</b> ' +
+        esc(calc.issues.join('; ')) + '. Delete it and re-enter the agreement, or correct the record.</div>';
+    }
+
+    var thumbHtml = l.contractImage
+      ? '<img class="thumb" src="' + l.contractImage + '" data-lightbox="' + esc(l.id) + '" alt="Lease contract for ' + esc(l.leaseName) + '" />'
+      : '<span class="thumb-placeholder" title="No contract photo uploaded">&mdash;</span>';
+
+    var body = '';
+    var contractHtml = '';
+    contractHtml += '<div class="contract-block">';
+    if(l.contractImage){
+      contractHtml += '<img src="' + l.contractImage + '" data-lightbox="' + esc(l.id) + '" alt="Lease contract" />' +
+        '<div><div style="font-size:12.5px; font-weight:500;">' + esc(l.contractImageName || 'Contract photo') + '</div>' +
+        '<button class="btn ghost danger" data-action="remove-image" data-id="' + esc(l.id) + '" style="padding-left:0;">Remove photo</button></div>';
+    } else {
+      contractHtml += '<span class="no-doc">No lease contract photo on file for this agreement.</span>' +
+        '<label class="btn secondary" style="margin-left:auto;">Upload<input type="file" accept="image/*" data-action="add-image" data-id="' + esc(l.id) + '" style="display:none;" /></label>';
+    }
+    contractHtml += '</div>';
+
+    var actionsHtml = '';
+    actionsHtml += '<div class="lease-actions">';
+    if(l.status === 'derecognized'){
+      actionsHtml += '<button class="btn secondary" data-action="reactivate" data-id="' + esc(l.id) + '">Reinstate as recognized</button>';
+    } else {
+      actionsHtml += '<button class="btn secondary" data-action="derecognize" data-id="' + esc(l.id) + '">Mark as derecognized&hellip;</button>';
+    }
+    actionsHtml += '<button class="btn ghost danger" data-action="delete" data-id="' + esc(l.id) + '">Delete lease</button>';
+    actionsHtml += '</div>';
+
+    if(l.status === 'derecognized' && calc.derecog){
+      var gl = calc.derecog.gainLoss;
+      body += '<div class="derecog-box">' +
+        '<div class="row"><span class="k">Derecognized on</span><span class="num">' + fmtDate(l.derecognitionDate) + ' (month ' + calc.derecog.monthsElapsed + ' of ' + calc.termMonths + ')</span></div>' +
+        '<div class="row"><span class="k">Remaining lease liability</span><span class="num">' + fmtINR(calc.derecog.liability) + '</span></div>' +
+        '<div class="row"><span class="k">ROU carrying amount at derecognition</span><span class="num">' + fmtINR(calc.derecog.rouCarrying) + '</span></div>' +
+        '<div class="row"><span class="k">Gain / (loss) on derecognition</span><span class="num ' + (gl>=0?'gain':'loss') + '">' + fmtINR(gl) + '</span></div>' +
+        '</div>';
+    }
+
+    body += '<div class="schedule-head">' +
+      '<span class="schedule-title">Amortization schedule (year-wise, FY 1 Apr&ndash;31 Mar)</span>' +
+      '<button class="btn secondary" data-action="download-excel" data-id="' + esc(l.id) + '">Download Excel schedule</button>' +
+      '</div>';
+
+    body += '<div class="scroll-hint">Scroll the table sideways to see the right-of-use asset columns &rarr;</div>';
+    body += '<div class="schedule-wrap"><table><thead><tr>' +
+      '<th rowspan="2">Period (date-wise)</th><th colspan="4" class="grp-head grp-liab">Lease liability</th><th colspan="3" class="grp-head grp-rou">Right-of-use asset</th>' +
+      '</tr><tr>' +
+      '<th>Opening liability</th><th>Interest</th><th>Principal repaid</th><th>Closing liability</th><th>Opening ROU asset</th><th>Depreciation</th><th>Closing ROU asset</th>' +
+      '</tr></thead><tbody>';
+    calc.yearly.forEach(function(r, idx){
+      var isLast = calc.derecog && idx === calc.yearly.length-1;
+      body += '<tr class="' + (isLast?'derecog-row':'') + '">' +
+        '<td class="period-cell">' + fmtDate(r.rangeStart) + ' &ndash; ' + fmtDate(r.rangeEnd) + '</td>' +
+        '<td class="num">' + fmtINR(r.opening) + '</td>' +
+        '<td class="num">' + fmtINR(r.interest) + '</td>' +
+        '<td class="num">' + fmtINR(r.principal) + '</td>' +
+        '<td class="num">' + fmtINR(r.closing) + '</td>' +
+        '<td class="num">' + fmtINR(r.rouOpening) + '</td>' +
+        '<td class="num">' + fmtINR(r.depreciation) + '</td>' +
+        '<td class="num">' + fmtINR(r.rouCarrying) + '</td>' +
+        '</tr>';
+    });
+    body += '</tbody></table></div>';
+
+    // Numbers first, then the paperwork: the schedule is what this app is for.
+    body += '<details class="sub-panel" data-id="p:' + esc(l.id) + '"' + (openLeaseIds['p:'+l.id] ? ' open' : '') + '><summary>Agreement particulars &amp; contract document</summary>' +
+      particularsBlock(l) + contractHtml + '</details>';
+    body += actionsHtml;
+
+    // <details>/<summary> is a NATIVE browser disclosure widget: opening and
+    // closing it needs no JavaScript, no event listener and no re-render, so
+    // it cannot be broken by a click landing mid-render.
+    return '<details class="lease-card" data-id="' + esc(l.id) + '"' + (open?' open':'') + '>' +
+      '<summary class="lease-summary">' +
+        '<div class="lease-card-head">' +
+          thumbHtml +
+          '<div class="lease-title-block">' +
+            '<span class="lname">' + esc(l.leaseName || 'Untitled lease') + '</span>' +
+            '<span class="lterm">' + fmtDate(l.startDate) + ' – ' + fmtDate(l.endDate) + ' &middot; ' + calc.termMonths + ' months</span>' +
+          '</div>' +
+          '<span class="pill ' + l.status + '">' + statusLabel + '</span>' +
+          '<button type="button" class="btn secondary xls-btn" data-action="download-excel" data-id="' + esc(l.id) + '" title="Download the year-wise amortization schedule as an Excel file">&#8681; Excel</button>' +
+          '<button type="button" class="btn secondary xls-btn" data-action="copy-schedule" data-id="' + esc(l.id) + '" title="Show the schedule as a table you can copy straight into Excel">Copy table</button>' +
+          '<svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</div>' +
+        warnHtml +
+        '<div class="stat-row">' +
+          '<div class="stat"><span class="label">Discount rate</span><span class="v num">' + (calc.measurable ? fmtPct(l.discountRate) : '&mdash;') + '</span></div>' +
+          '<div class="stat"><span class="label">Lease liability (ROU) at start</span><span class="v num small">' + money(calc.pv) + '</span></div>' +
+          '<div class="stat"><span class="label">Implied monthly payment</span><span class="v num small">' + money(calc.payment) + '</span></div>' +
+          '<div class="stat"><span class="label">Monthly depreciation</span><span class="v num small">' + money(calc.monthlyDep) + '</span></div>' +
+          '<div class="stat"><span class="label">Total interest over term</span><span class="v num small">' + money(calc.totalInterest) + '</span></div>' +
+          '<div class="stat"><span class="label">Months to pay</span><span class="v num">' + (calc.termMonths > 0 ? calc.termMonths : '&mdash;') + '</span></div>' +
+        '</div>' +
+      '</summary>' +
+      '<div class="lease-body">' + body + '</div>' +
+      '</details>';
+  }
+
+  // The browser opens and closes the card by itself. This listener only
+  // records which cards are open so the state survives a re-render. If it
+  // never runs, expanding still works — only the memory is lost.
+  var toggleDelegationInstalled = false;
+  function installToggleDelegation(){
+    if(toggleDelegationInstalled) return;
+    toggleDelegationInstalled = true;
+    // 'toggle' does not bubble, so listen in the capture phase.
+    document.addEventListener('toggle', function(ev){
+      var el = ev.target;
+      if(!el || el.tagName !== 'DETAILS') return;
+      var id = el.getAttribute('data-id');
+      if(id) openLeaseIds[id] = el.open;
+    }, true);
+
+    // The Excel button sits inside <summary>, so its click must NOT reach the
+    // browser's disclosure handling. Delegated once, at the document, so it
+    // works no matter when the row was rendered.
+    document.addEventListener('click', function(ev){
+      var t = ev.target;
+      if(!t) return;
+      var btn = null, node = t;
+      while(node && node !== document){
+        if(node.getAttribute){
+          var act = node.getAttribute('data-action');
+          if(act === 'download-excel' || act === 'copy-schedule'){ btn = node; break; }
+        }
+        node = node.parentNode;
+      }
+      if(!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      // 1) the object bound to the card itself  2) the id index
+      // 3) the id scan  4) the only lease on screen
+      var lease = null, card = btn;
+      while(card && card !== document){
+        if(card.classList && card.classList.contains('lease-card')) break;
+        card = card.parentNode;
+      }
+      if(card && card.__lease) lease = card.__lease;
+      if(!lease) lease = findLeaseById(btn.getAttribute('data-id'));
+      if(!lease && currentLeaseList.length === 1) lease = currentLeaseList[0];
+      if(!lease){ showAlert('Could not find this lease to export.'); return; }
+      if(btn.getAttribute('data-action') === 'copy-schedule'){
+        showScheduleFallback(lease, 'Here is the schedule as a table.');
+      } else {
+        exportLeaseScheduleExcel(lease);
+      }
+    });
+  }
+
+  // Look a lease up across every loaded counterparty, so the export never
+  // depends on which closure wired the button.
+  function findLeaseById(id){
+    if(!id) return null;
+    if(leasesById[id]) return leasesById[id];
+    var keys = Object.keys(leases);
+    for(var k=0; k<keys.length; k++){
+      var arr = leases[keys[k]] || [];
+      for(var i=0; i<arr.length; i++){ if(arr[i].id === id) return arr[i]; }
+    }
+    return null;
+  }
+
+  function wireMainEvents(company, counterparty){
+    var del = document.getElementById('deleteCompanyBtn');
+    if(del) del.addEventListener('click', function(){ deleteCompany(company); });
+
+    var cpSelect = document.getElementById('cpSelect');
+    if(cpSelect) cpSelect.addEventListener('change', function(){ selectCounterparty(company.id, cpSelect.value || null); });
+    var addCpBtn = document.getElementById('addCpBtn');
+    if(addCpBtn) addCpBtn.addEventListener('click', function(){
+      var el = document.getElementById('newCpName');
+      addCounterparty(company, el.value);
+      el.value = '';
+    });
+    var newCpInput = document.getElementById('newCpName');
+    if(newCpInput) newCpInput.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ document.getElementById('addCpBtn').click(); } });
+
+    if(!counterparty) return;
+
+    var cpFileInput = document.getElementById('cpFileInput');
+    if(cpFileInput){
+      cpFileInput.addEventListener('change', function(){
+        var f = cpFileInput.files && cpFileInput.files[0];
+        if(f) openUploadModal(f, company.id, counterparty.id);
+        cpFileInput.value = '';
+      });
+    }
+    var cpTemplateBtn = document.getElementById('cpTemplateBtn');
+    if(cpTemplateBtn) cpTemplateBtn.addEventListener('click', downloadBlankLeaseTemplate);
+
+    var cpManualBtn = document.getElementById('cpManualBtn');
+    if(cpManualBtn) cpManualBtn.addEventListener('click', function(){
+      modalState = { stage: 'manualLease', presetCompanyId: company.id, presetCounterpartyId: counterparty.id };
+      renderModal();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-lightbox]'), function(el){
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); openLightbox(el.getAttribute('src')); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="delete"]'), function(el){
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); deleteLease(company, counterparty, el.getAttribute('data-id')); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-repair-broken]'), function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var key = leaseKey(company.id, counterparty.id);
+        var idx = Number(el.getAttribute('data-repair-broken'));
+        var item = (brokenLeases[key] || [])[idx];
+        if(!item) return;
+        el.disabled = true; el.textContent = 'Repairing…';
+        repairBrokenLease(company, counterparty, item);
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="derecognize"]'), function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = el.getAttribute('data-id');
+        var today = new Date().toISOString().slice(0,10);
+        showPrompt('Derecognition date:', today, function(d){
+          updateLease(company, counterparty, id, {status:'derecognized', derecognitionDate:d});
+        });
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="reactivate"]'), function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = el.getAttribute('data-id');
+        updateLease(company, counterparty, id, {status:'recognized', derecognitionDate:null});
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="remove-image"]'), function(el){
+      el.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = el.getAttribute('data-id');
+        // The scan is the audit evidence for this lease and there is no undo.
+        showConfirm('Remove the contract photo from this lease? The agreement details stay, but the scanned document is deleted and cannot be recovered.', function(){
+          updateLease(company, counterparty, id, {contractImage:null, contractImageName:null});
+        });
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-action="add-image"]'), function(el){
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); });
+      el.addEventListener('change', function(ev){
+        ev.stopPropagation();
+        var id = el.getAttribute('data-id');
+        var file = el.files && el.files[0];
+        if(!file) return;
+        compressImageFile(file, function(dataUrl){
+          if(dataUrl) updateLease(company, counterparty, id, {contractImage:dataUrl, contractImageName:file.name});
+          else showAlert('Could not compress this photo small enough to store — try a smaller image.');
+        });
+      });
+    });
+  }
+
+  // ---------- data ops: companies ----------
+  function selectCompany(id){
+    selectedCompanyId = id;
+    selectedCounterpartyId = null;
+    openLeaseIds = {};
+    renderSidebar();
+    subscribeCounterparties(id);
+    renderMain();
+  }
+
+  function addCompanyName(name){
+    name = (name || '').trim();
+    if(!name){ showAlert('Type a company name first.'); return; }
+    if(db){
+      dbAdd('companies', { name: name, createdAt: new Date().toISOString() })
+        .then(function(ref){ selectCompany(ref.id); toast('Company added'); }, function(err){
+          showAlert('Could not add "' + name + '": ' + ((err && (err.message || err.code)) || 'unknown error') + '.');
+        });
+    } else {
+      var id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      localStore.companies.push({id:id, name:name});
+      localStore.counterparties[id] = [];
+      syncFromLocal();
+      selectCompany(id);
+    }
+  }
+
+  function deleteCompany(company){
+    showConfirm('Remove "' + company.name + '" and everything under it? This cannot be undone.', function(){
+      if(db){
+        db.collection('companies/' + company.id + '/counterparties').get().then(function(cpSnap){
+          var chain = Promise.resolve();
+          cpSnap.docs.forEach(function(p){
+            chain = chain.then(function(){
+              return db.collection('companies/' + company.id + '/counterparties/' + p.id + '/leases').get();
+            }).then(function(lSnap){
+              return Promise.all(lSnap.docs.map(function(l){
+                return db.doc('companies/' + company.id + '/counterparties/' + p.id + '/leases/' + l.id).delete();
+              }));
+            }).then(function(){ return db.doc('companies/' + company.id + '/counterparties/' + p.id).delete(); });
+          });
+          return chain;
+        }).then(function(){ return db.doc('companies/' + company.id).delete(); })
+          .then(function(){}, function(err){
+            showAlert('Could not fully remove "' + company.name + '": ' +
+              ((err && (err.message || err.code)) || 'unknown error') +
+              '. Some records may still exist — reload to see what remains.');
+          });
+      } else {
+        localStore.companies = localStore.companies.filter(function(c){ return c.id !== company.id; });
+        delete localStore.counterparties[company.id];
+        Object.keys(localStore.leases).forEach(function(k){ if(k.indexOf(company.id+'::')===0) delete localStore.leases[k]; });
+        syncFromLocal();
+      }
+      selectedCompanyId = null;
+      selectedCounterpartyId = null;
+      renderSidebar();
+      renderMain();
+    });
+  }
+
+  // ---------- data ops: counterparties ----------
+  function selectCounterparty(companyId, counterpartyId){
+    selectedCounterpartyId = counterpartyId;
+    openLeaseIds = {};
+    if(counterpartyId) subscribeLeases(companyId, counterpartyId);
+    else if(unsubLeases){ unsubLeases(); unsubLeases = null; }
+    renderMain();
+  }
+
+  function addCounterparty(company, name){
+    name = (name || '').trim();
+    if(!name){ showAlert('Type a counterparty name first.'); return; }
+    if(db){
+      dbAdd('companies/' + company.id + '/counterparties', { name: name })
+        .then(function(ref){ selectCounterparty(company.id, ref.id); toast('Counterparty added'); }, function(err){
+          showAlert('Could not add "' + name + '": ' + ((err && (err.message || err.code)) || 'unknown error') + '.');
+        });
+    } else {
+      var id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      localStore.counterparties[company.id] = localStore.counterparties[company.id] || [];
+      localStore.counterparties[company.id].push({id:id, name:name});
+      localStore.leases[leaseKey(company.id, id)] = [];
+      syncFromLocal();
+      selectCounterparty(company.id, id);
+    }
+  }
+
+  // ---------- data ops: leases ----------
+  function applyPatchLocally(key, leaseId, patch){
+    var arr = leases[key] || [];
+    for(var i=0; i<arr.length; i++){
+      if(arr[i].id === leaseId){
+        for(var k in patch){ if(Object.prototype.hasOwnProperty.call(patch, k)) arr[i][k] = patch[k]; }
+        break;
+      }
+    }
+    if(leasesById[leaseId]){
+      for(var k2 in patch){ if(Object.prototype.hasOwnProperty.call(patch, k2)) leasesById[leaseId][k2] = patch[k2]; }
+    }
+    leaseSignatures[key] = null;   // let the next snapshot repaint
+  }
+
+  function updateLease(company, counterparty, leaseId, patch){
+    if(!leaseId){
+      showAlert('This lease record has no usable ID (likely left over from an earlier version of the app) and can\'t be updated. Please re-add it as a new lease.');
+      return;
+    }
+    var key = leaseKey(company.id, counterparty.id);
+
+    // Update on screen first, so the card responds immediately instead of
+    // waiting on a round trip that may fail silently.
+    applyPatchLocally(key, leaseId, patch);
+    renderMain();
+
+    if(db){
+      db.doc('companies/' + company.id + '/counterparties/' + counterparty.id + '/leases/' + leaseId)
+        .update(patch)
+        .then(function(){
+          if(patch.status === 'derecognized') toast('Lease derecognized');
+          else if(patch.status === 'recognized') toast('Lease reinstated as recognized');
+          else if('contractImage' in patch) toast('Contract photo removed');
+        }, function(err){
+          showAlert('The change is shown here but could not be saved to the shared record: ' +
+            ((err && (err.message || err.code)) || 'unknown error') +
+            '. It may not stick for other people or after a reload.');
+        });
+    } else {
+      var larr = localStore.leases[key] || [];
+      var item = larr.find(function(l){ return l.id === leaseId; });
+      if(item){ Object.assign(item, patch); syncFromLocal(); renderMain(); }
+    }
+  }
+
+  function deleteLease(company, counterparty, leaseId){
+    if(!leaseId){
+      showAlert('This lease record has no usable ID (likely left over from an earlier version of the app) and can\'t be deleted from here.');
+      return;
+    }
+    showConfirm('Delete this lease agreement?', function(){
+      if(db){
+        // Remove it on screen straight away, then persist.
+        var dkey = leaseKey(company.id, counterparty.id);
+        var before = (leases[dkey] || []).slice();
+        leases[dkey] = (leases[dkey] || []).filter(function(l){ return l.id !== leaseId; });
+        delete leasesById[leaseId];
+        leaseSignatures[dkey] = null;
+        renderMain();
+
+        db.doc('companies/' + company.id + '/counterparties/' + counterparty.id + '/leases/' + leaseId)
+          .delete()
+          .then(function(){ toast('Lease deleted'); }, function(err){
+            leases[dkey] = before;          // put it back — the delete did not happen
+            leaseSignatures[dkey] = null;
+            renderMain();
+            showAlert('Could not delete this lease: ' + ((err && (err.message || err.code)) || 'unknown error') + '.');
+          });
+      } else {
+        var key = leaseKey(company.id, counterparty.id);
+        localStore.leases[key] = (localStore.leases[key]||[]).filter(function(l){ return l.id !== leaseId; });
+        syncFromLocal();
+        renderMain();
+      }
+    });
+  }
+
+  function syncFromLocal(){
+    persistLocalStore();
+    companies = localStore.companies.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    counterparties = {};
+    Object.keys(localStore.counterparties).forEach(function(cid){
+      counterparties[cid] = localStore.counterparties[cid].slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    });
+    leases = {};
+    Object.keys(localStore.leases).forEach(function(k){
+      leases[k] = localStore.leases[k].slice().sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+    });
+    renderSidebar();
+  }
+
+  // ---------- subscriptions ----------
+  function subscribeCompanies(){
+    if(!db) return;
+    db.collection('companies').orderBy('name','asc').onSnapshot(function(snap){
+      var nextCompanies = snap.docs.map(function(d){ var data=d.data()||{}; return {id:d.id, name:data.name}; });
+      companies = nextCompanies;                // data is ALWAYS kept current
+      var coSig = signatureOf(nextCompanies);
+      var coChanged = companySignature !== coSig;
+      companySignature = coSig;
+      if(!coChanged) return;
+      var stillThere = companies.some(function(c){ return c.id === selectedCompanyId; });
+      if(selectedCompanyId && !stillThere){
+        selectedCompanyId = null; selectedCounterpartyId = null;
+      }
+      renderSidebar();
+      // A company selected a moment ago (e.g. one just added) may not have
+      // existed in the list when the view was last drawn — draw it now.
+      renderMain();
+      if(modalState && modalState.stage === 'confirm') renderModal();
+    }, function(){ setSync(false); });
+  }
+
+  function subscribeCounterparties(companyId){
+    if(unsubCounterparties){ unsubCounterparties(); unsubCounterparties = null; }
+    if(!db || !companyId) return;
+    unsubCounterparties = db.collection('companies/' + companyId + '/counterparties').orderBy('name','asc').onSnapshot(function(snap){
+      var nextCps = snap.docs.map(function(d){ var data=d.data()||{}; return {id:d.id, name:data.name}; });
+      counterparties[companyId] = nextCps;      // data is ALWAYS kept current
+      var cpSig = signatureOf(nextCps);
+      var cpChanged = cpSignatures[companyId] !== cpSig;
+      cpSignatures[companyId] = cpSig;
+      if(!cpChanged) return;
+      renderSidebar();
+      if(selectedCompanyId === companyId) renderMain();
+      if(modalState && modalState.stage === 'confirm') renderModal();
+    }, function(){});
+  }
+
+  function subscribeLeases(companyId, counterpartyId){
+    if(unsubLeases){ unsubLeases(); unsubLeases = null; }
+    if(!db || !companyId || !counterpartyId) return;
+    var key = leaseKey(companyId, counterpartyId);
+    if(!repairedHashes[key]) repairedHashes[key] = {};
+    // One-off read of which broken records under this counterparty have
+    // already been restored, so they are not offered for repair again.
+    db.collection('companies/' + companyId + '/counterparties/' + counterpartyId + '/repairs').get().then(function(rsnap){
+      rsnap.docs.forEach(function(d){ repairedHashes[key][d.id] = true; });
+    }, function(){});
+    unsubLeases = db.collection('companies/' + companyId + '/counterparties/' + counterpartyId + '/leases').orderBy('startDate','asc').onSnapshot(function(snap){
+      // A document with a blank id can be created by the store but can never
+      // be addressed again (db.doc() rejects an empty path segment) — so a
+      // real lease stuck like this can't be updated or deleted in place.
+      // It is kept out of the normal list (it would be an unusable,
+      // unclickable card) but its data is not lost: it is offered for
+      // one-click repair, which recreates it as a fresh, editable lease.
+      var next = [], broken = [];
+      snap.docs.forEach(function(d){
+        var data = d.data() || {};
+        if(d.id){ data.id = d.id; next.push(data); }
+        else {
+          var hash = leaseContentHash(data);
+          if(!repairedHashes[key][hash]) broken.push({ hash: hash, data: data });
+        }
+      });
+      leases[key] = next;                       // data is ALWAYS kept current
+      brokenLeases[key] = broken;
+      var sig = signatureOf(next) + '|' + signatureOf(broken);
+      var changed = leaseSignatures[key] !== sig;
+      leaseSignatures[key] = sig;
+      // Skip only the redundant repaint (it would replace the DOM under the
+      // pointer and eat a click) — never skip a render the view still needs.
+      if(selectedCompanyId === companyId && selectedCounterpartyId === counterpartyId){
+        if(changed || lastMainKey !== key) renderMain();
+      }
+    }, function(){});
+  }
+
+  function repairBrokenLease(company, counterparty, item){
+    var key = leaseKey(company.id, counterparty.id);
+    var clean = {};
+    Object.keys(item.data).forEach(function(k){ clean[k] = item.data[k]; });
+    delete clean.id;
+    if(!clean.createdAt) clean.createdAt = new Date().toISOString();
+    addLeaseDoc(company.id, counterparty.id, clean).then(function(newLeaseId){
+      return db.doc('companies/' + company.id + '/counterparties/' + counterparty.id + '/repairs/' + item.hash)
+        .set({ repairedAt: new Date().toISOString(), newLeaseId: newLeaseId });
+    }).then(function(){
+      if(!repairedHashes[key]) repairedHashes[key] = {};
+      repairedHashes[key][item.hash] = true;
+      brokenLeases[key] = (brokenLeases[key] || []).filter(function(b){ return b.hash !== item.hash; });
+      renderMain();
+      toast('Lease restored — you can now derecognize, edit and export it normally');
+    }, function(err){
+      showAlert('Could not restore this lease: ' + ((err && (err.message || err.code)) || 'unknown error') + '.');
+    });
+  }
+
+  function setSync(ok){
+    var dot = document.getElementById('syncDot');
+    var text = document.getElementById('syncText');
+    if(ok){
+      dot.className = 'dot';
+      text.textContent = 'Synced across everyone with this page open';
+    } else {
+      dot.className = 'dot off';
+      text.textContent = localMode ? 'Local to this device only — no shared sync available' : 'Sync unavailable — retrying';
+    }
+  }
+
+  // ---------- init ----------
+  document.getElementById('addCompanyBtn').addEventListener('click', function(){
+    var el = document.getElementById('newCompanyName');
+    addCompanyName(el.value);
+    el.value = '';
+  });
+  document.getElementById('newCompanyName').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ document.getElementById('addCompanyBtn').click(); } });
+
+  document.getElementById('globalFileInput').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    if(f) openUploadModal(f, null, null);
+    this.value = '';
+  });
+  document.getElementById('downloadTemplateBtn').addEventListener('click', downloadBlankLeaseTemplate);
+
+  installToggleDelegation();
+  renderSidebar();
+  renderMain();
+
+  // This standalone (hosted-on-the-web) build has no Claude runtime, so it
+  // always ends up here: data is kept in this browser's localStorage only
+  // (persistLocalStore(), wired into syncFromLocal()), and the AI/OCR
+  // auto-read upload path is disabled in favour of the no-AI Excel
+  // template, which is the only upload path that works without Claude.
+  var localModeUIApplied = false;
+  function enterLocalMode(){
+    localMode = true;
+    setSync(false);
+    syncFromLocal();   // pulls in anything already saved on this device
+    renderMain();
+    if(!localModeUIApplied){
+      localModeUIApplied = true;
+      applyLocalModeUI();
+    }
+  }
+
+  function applyLocalModeUI(){
+    var input = document.getElementById('globalFileInput');
+    if(input) input.setAttribute('accept', '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    var hint = document.querySelector('.global-upload .h');
+    if(hint) hint.textContent = 'This hosted copy has no AI reading — fill in the blank Excel template below and upload it (or add each lease by hand once a company is open).';
+    var uploadLabel = document.querySelector('.global-upload label.btn[for="globalFileInput"]');
+    if(uploadLabel) uploadLabel.textContent = 'Upload filled-in template';
+  }
+
+  function boot(){
+    if(window.claude && typeof window.claude.use === 'function'){
+      window.claude.use('db').then(function(handle){
+        if(handle){ db = handle; setSync(true); subscribeCompanies(); }
+        else { enterLocalMode(); }
+      }).catch(function(){ enterLocalMode(); });
+      window.claude.use('sample').then(function(handle){ sampleFn = handle; }).catch(function(){ sampleFn = null; });
+      getDownloads();
+    } else {
+      enterLocalMode();
+    }
+  }
+  boot();
+  setTimeout(function(){ if(!db && !localMode){ enterLocalMode(); } }, 4000);
+
+})();
+</script>
+</body>
+</html>

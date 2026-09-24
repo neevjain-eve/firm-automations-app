@@ -11,6 +11,7 @@ import {
   FileClock,
   Receipt,
   Building2,
+  Calculator,
   CheckSquare2,
   PenTool,
   Settings as SettingsIcon,
@@ -38,6 +39,7 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
       { href: '/el-tracker', label: 'EL Tracker', Icon: FileClock, trackerKey: 'el-tracker' },
       { href: '/gst-reconciliation', label: 'GST Reconciliation', Icon: Receipt, trackerKey: 'gst-reconciliation' },
       { href: '/lease-agreement', label: 'Lease Agreement', Icon: Building2, trackerKey: 'lease-agreement' },
+      { href: '/lease-ledger', label: 'Lease Ledger', Icon: Calculator, trackerKey: 'lease-ledger' },
       { href: '/todo-list', label: 'To-Do List', Icon: CheckSquare2, trackerKey: 'todo-list' },
       { href: '/e-signature', label: 'e-Signature', Icon: PenTool, trackerKey: 'e-signature' }
     ]

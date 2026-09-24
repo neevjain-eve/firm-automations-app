@@ -8,6 +8,7 @@ const TRACKERS = [
   { key: 'el-tracker', label: 'EL Tracker' },
   { key: 'gst-reconciliation', label: 'GST Reconciliation' },
   { key: 'lease-agreement', label: 'Lease Agreement' },
+  { key: 'lease-ledger', label: 'Lease Ledger' },
   { key: 'todo-list', label: 'To-Do List' },
   { key: 'e-signature', label: 'e-Signature' }
 ];

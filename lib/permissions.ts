@@ -8,6 +8,7 @@ export const TRACKERS = [
   { key: 'el-tracker', label: 'EL Tracker', paths: ['/el-tracker', '/api/el-tracker'] },
   { key: 'gst-reconciliation', label: 'GST Reconciliation', paths: ['/gst-reconciliation', '/api/gst-reconciliation'] },
   { key: 'lease-agreement', label: 'Lease Agreement', paths: ['/lease-agreement', '/api/lease-agreement'] },
+  { key: 'lease-ledger', label: 'Lease Ledger', paths: ['/lease-ledger'] },
   { key: 'todo-list', label: 'To-Do List', paths: ['/todo-list', '/api/todo-list'] },
   { key: 'e-signature', label: 'e-Signature', paths: ['/e-signature', '/api/e-signature'] }
 ] as const;
