@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { insertRow } from '@/lib/onedrive/store';
+import type { ToDoWorkLogRow } from '@/lib/onedrive/schema';
+import { COLLECTIONS } from '@/lib/onedrive/schema';
+import { getUserLiteMap, userRef } from '@/lib/onedrive/users';
+import { newId } from '@/lib/onedrive/id';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -10,13 +14,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { description } = await req.json();
   if (!description) return NextResponse.json({ error: 'description is required' }, { status: 400 });
 
-  const entry = await prisma.toDoWorkLog.create({
-    data: {
-      taskId: params.id,
-      userId: (session.user as any).id,
-      description
-    },
-    include: { user: { select: { name: true, email: true } } }
-  });
-  return NextResponse.json(entry);
+  const userId = (session.user as any).id;
+  const now = new Date().toISOString();
+  const entry: ToDoWorkLogRow = {
+    id: newId(),
+    taskId: params.id,
+    userId,
+    description,
+    logDate: now,
+    createdAt: now
+  };
+  await insertRow(COLLECTIONS.todoWorkLogs, entry);
+
+  const users = await getUserLiteMap();
+  return NextResponse.json({ ...entry, user: userRef(users, userId) });
 }

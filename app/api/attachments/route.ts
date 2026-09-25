@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
 import { getBlobToken } from '@/lib/settings';
+import { readCollection, insertRow } from '@/lib/onedrive/store';
+import type { AttachmentRow } from '@/lib/onedrive/schema';
+import { COLLECTIONS } from '@/lib/onedrive/schema';
+import { getUserLiteMap, userRef } from '@/lib/onedrive/users';
+import { newId } from '@/lib/onedrive/id';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -16,11 +20,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'entityType and entityId are required' }, { status: 400 });
   }
 
-  const attachments = await prisma.attachment.findMany({
-    where: { entityType, entityId },
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [rows, users] = await Promise.all([
+    readCollection<AttachmentRow>(COLLECTIONS.attachments),
+    getUserLiteMap()
+  ]);
+  const attachments = rows
+    .filter((a) => a.entityType === entityType && a.entityId === entityId)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .map((a) => ({ ...a, user: userRef(users, a.userId) }));
   return NextResponse.json(attachments);
 }
 
@@ -53,17 +60,19 @@ export async function POST(req: NextRequest) {
     token: blobToken
   });
 
-  const attachment = await prisma.attachment.create({
-    data: {
-      entityType,
-      entityId,
-      fileName: file.name,
-      fileUrl: blob.url,
-      fileSize: file.size,
-      userId: (session.user as any).id
-    },
-    include: { user: { select: { name: true, email: true } } }
-  });
+  const userId = (session.user as any).id;
+  const attachment: AttachmentRow = {
+    id: newId(),
+    entityType,
+    entityId,
+    fileName: file.name,
+    fileUrl: blob.url,
+    fileSize: file.size,
+    createdAt: new Date().toISOString(),
+    userId
+  };
+  await insertRow(COLLECTIONS.attachments, attachment);
 
-  return NextResponse.json(attachment, { status: 201 });
+  const users = await getUserLiteMap();
+  return NextResponse.json({ ...attachment, user: userRef(users, userId) }, { status: 201 });
 }
