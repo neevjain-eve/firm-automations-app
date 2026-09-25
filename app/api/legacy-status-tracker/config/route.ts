@@ -12,7 +12,7 @@ import { LEGACY_STORE_FILES } from '@/lib/onedrive/schema';
 const DEFAULT_USERS = [
   { id: 'USR-1', email: 'bindu@pdka.in', password: 'changeme', role: 'manager', manager: 'Bindu', name: 'Bindu' },
   { id: 'USR-2', email: 'srikrishna@pdka.in', password: 'changeme', role: 'manager', manager: 'Srikrishna', name: 'Srikrishna' },
-  { id: 'USR-3', email: 'naveen@pdka.in', password: 'changeme', role: 'admin', manager: null, name: 'Naveen' },
+  { id: 'USR-3', email: 'naveen@pdka.in', password: 'changeme', role: 'manager', manager: 'Naveen', name: 'Naveen' },
   { id: 'USR-4', email: 'rajesh@pdka.in', password: 'changeme', role: 'manager', manager: 'Rajesh', name: 'Rajesh' },
   { id: 'USR-5', email: 'manju@pdka.in', password: 'changeme', role: 'manager', manager: 'Manju', name: 'Manju' },
   { id: 'USR-6', email: 'ramya@pdka.in', password: 'changeme', role: 'manager', manager: 'Ramya', name: 'Ramya' }
