@@ -1,26 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { updateRow, deleteRow } from '@/lib/onedrive/store';
+import type { StatusTaskRow } from '@/lib/onedrive/schema';
+import { COLLECTIONS } from '@/lib/onedrive/schema';
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const data: Record<string, unknown> = {};
-  if (body.status) data.status = body.status;
-  if (body.title) data.title = body.title;
-  if (body.clientName !== undefined) data.clientName = body.clientName || null;
-  if (body.manager !== undefined) data.manager = body.manager || null;
-  if (body.teamMember !== undefined) data.teamMember = body.teamMember || null;
-  if (body.priority) data.priority = body.priority;
-  if (body.notes !== undefined) data.notes = body.notes || null;
-  if (body.blockers !== undefined) data.blockers = body.blockers || null;
-  if (body.actionPoints !== undefined) data.actionPoints = body.actionPoints || null;
-  if (body.dueDate !== undefined) data.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+  const patch: Partial<StatusTaskRow> = { updatedAt: new Date().toISOString() };
+  if (body.status) patch.status = body.status;
+  if (body.title) patch.title = body.title;
+  if (body.clientName !== undefined) patch.clientName = body.clientName || null;
+  if (body.manager !== undefined) patch.manager = body.manager || null;
+  if (body.teamMember !== undefined) patch.teamMember = body.teamMember || null;
+  if (body.priority) patch.priority = body.priority;
+  if (body.notes !== undefined) patch.notes = body.notes || null;
+  if (body.blockers !== undefined) patch.blockers = body.blockers || null;
+  if (body.actionPoints !== undefined) patch.actionPoints = body.actionPoints || null;
+  if (body.dueDate !== undefined) patch.dueDate = body.dueDate ? new Date(body.dueDate).toISOString() : null;
 
-  const task = await prisma.statusTask.update({ where: { id: params.id }, data });
+  const task = await updateRow<StatusTaskRow>(COLLECTIONS.statusTasks, params.id, patch);
   return NextResponse.json(task);
 }
 
@@ -28,6 +30,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  await prisma.statusTask.delete({ where: { id: params.id } });
+  await deleteRow(COLLECTIONS.statusTasks, params.id);
   return NextResponse.json({ ok: true });
 }

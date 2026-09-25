@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { readCollection, insertRow } from '@/lib/onedrive/store';
+import type { CommentRow } from '@/lib/onedrive/schema';
+import { COLLECTIONS } from '@/lib/onedrive/schema';
+import { getUserLiteMap, userRef } from '@/lib/onedrive/users';
+import { newId } from '@/lib/onedrive/id';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -14,11 +18,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'entityType and entityId are required' }, { status: 400 });
   }
 
-  const comments = await prisma.comment.findMany({
-    where: { entityType, entityId },
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: 'asc' }
-  });
+  const [rows, users] = await Promise.all([
+    readCollection<CommentRow>(COLLECTIONS.comments),
+    getUserLiteMap()
+  ]);
+  const comments = rows
+    .filter((c) => c.entityType === entityType && c.entityId === entityId)
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+    .map((c) => ({ ...c, user: userRef(users, c.userId) }));
   return NextResponse.json(comments);
 }
 
@@ -32,14 +39,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'entityType, entityId, and body are required' }, { status: 400 });
   }
 
-  const comment = await prisma.comment.create({
-    data: {
-      entityType,
-      entityId,
-      body: text,
-      userId: (session.user as any).id
-    },
-    include: { user: { select: { name: true, email: true } } }
-  });
-  return NextResponse.json(comment, { status: 201 });
+  const userId = (session.user as any).id;
+  const comment: CommentRow = {
+    id: newId(),
+    entityType,
+    entityId,
+    body: text,
+    createdAt: new Date().toISOString(),
+    userId
+  };
+  await insertRow(COLLECTIONS.comments, comment);
+
+  const users = await getUserLiteMap();
+  return NextResponse.json({ ...comment, user: userRef(users, userId) }, { status: 201 });
 }

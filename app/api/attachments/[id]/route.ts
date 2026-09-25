@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { del } from '@vercel/blob';
 import { getBlobToken } from '@/lib/settings';
+import { readCollection, deleteRow } from '@/lib/onedrive/store';
+import type { AttachmentRow } from '@/lib/onedrive/schema';
+import { COLLECTIONS } from '@/lib/onedrive/schema';
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const attachment = await prisma.attachment.findUnique({ where: { id: params.id } });
+  const rows = await readCollection<AttachmentRow>(COLLECTIONS.attachments);
+  const attachment = rows.find((a) => a.id === params.id);
   if (!attachment) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
   const me = session.user as any;
@@ -23,9 +26,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       await del(attachment.fileUrl, { token: blobToken });
     }
   } catch {
-    // if the blob is already gone, still clean up the DB row
+    // if the blob is already gone, still clean up the record
   }
 
-  await prisma.attachment.delete({ where: { id: params.id } });
+  await deleteRow(COLLECTIONS.attachments, params.id);
   return NextResponse.json({ ok: true });
 }
