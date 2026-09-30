@@ -13,16 +13,24 @@ import { useSession } from 'next-auth/react';
 // the in-app staff login screen, rendering -- is untouched.
 //
 // Single sign-on: since this page only ever loads for someone already
-// signed into the main app, we pass their email/name into the iframe as
-// query params, which its login screen reads (see the ssoEmail/ssoName
+// signed into the main app, we pass their email/name/role into the iframe
+// as query params, which its login screen reads (see the ssoEmail/ssoName
 // useEffect added to the Login component) to match or auto-provision a
 // local account and sign them straight in -- no second Microsoft popup.
+// ssoRole matters for anyone the tracker's own user list doesn't already
+// know about: without it, an unrecognized email used to silently default
+// to "manager" even for this app's own admins.
 export default function StatusTrackerPage() {
   const { data: session } = useSession();
   const email = session?.user?.email;
   const name = session?.user?.name;
+  const role = (session?.user as any)?.role;
+  const params = new URLSearchParams();
+  if (email) params.set('ssoEmail', email);
+  if (name) params.set('ssoName', name);
+  if (role) params.set('ssoRole', role);
   const src = email
-    ? `/legacy/status-tracker/index.html?ssoEmail=${encodeURIComponent(email)}${name ? `&ssoName=${encodeURIComponent(name)}` : ''}`
+    ? `/legacy/status-tracker/index.html?${params.toString()}`
     : '/legacy/status-tracker/index.html';
   return (
     <iframe
